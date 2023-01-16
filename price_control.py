@@ -22,6 +22,7 @@ class MainWindow(tk.Tk):
         self.auth = str(config['APP']['AUTH'])
         self.timeout = int(config['APP']['REQUEST_TIMEOUT'])
         self.mode = str(config['APP']['MODE'])
+        self.override = str(config['APP']['OVERRIDE'])
 
         self.triggerprice = 0
         self.lastaction = ''
@@ -66,11 +67,11 @@ class MainWindow(tk.Tk):
         self.refresh_devices()
 
         # List for prices
-        self.priceframe = ttk.Frame(self, borderwidth=0, relief='raised')
+        self.priceframe = ttk.Labelframe(self, text="Prices")
         self.pricelist = Listbox(self.priceframe, height=24, width=50)
 
-        self.priceframe.grid(column=2, row=0, padx=5, pady=5, rowspan=10)
-        self.pricelist.grid(column=0, row=0, padx=0, pady=0)
+        self.priceframe.grid(column=2, row=0, padx=5, pady=5, rowspan=20, sticky="nw")
+        self.pricelist.grid(column=0, row=0, padx=4, pady=4)
 
         # List for avg price
         self.avgpriceframe = ttk.Labelframe(self, text="Price control")
@@ -102,17 +103,21 @@ class MainWindow(tk.Tk):
         self.setfixed.grid(column=1, row=2, sticky="e")
         self.setratio.grid(column=1, row=3, sticky="e")
 
+        # checkbox for override
+        self.checkoverride_val = tk.StringVar(None, self.override)
+        self.checkoverride = tk.Checkbutton(self.avgpriceframe, text="Override/Repeat", variable=self.checkoverride_val, onvalue='ON', offvalue='OFF')
+        self.checkoverride.grid(column=0, row=4, sticky="w", padx=7, pady=4)
+
         # Last updated
         self.lastupdate = ttk.Label(self, text="Last update: N/A")
-        self.lastupdate.grid(column=0, row=2, padx=5, pady=5, ipady=5, sticky="nw", columnspan=2)
+        self.lastupdate.grid(column=0, row=2, padx=5, pady=5, sticky="nw", columnspan=2)
 
         # Last action
         self.lastaction_label = ttk.Label(self, text="Last action: N/A")
-        self.lastaction_label.grid(column=0, row=3, padx=5, pady=5, ipady=5, sticky="nw", columnspan=2)
+        self.lastaction_label.grid(column=0, row=3, padx=5, pady=5, sticky="nw", columnspan=2)
 
         self.lastupdate['text'] = datetime.strftime(datetime.now(), "Last update: %H:%M:%S")
         self.lastupdate.after(self.delayseconds, self.timer_loop)
-
 
     def fixedprice(self):
         if self.controltype.get() == "fixed":
@@ -130,8 +135,8 @@ class MainWindow(tk.Tk):
 
             prices.sort()
             self.triggerprice = float(prices[int(self.priceratio_val.get())])
-            self.update_list()
             print(f"ratio: {self.priceratio_val.get()} price: {self.triggerprice}")
+        self.update_list()
         return
 
     def refresh_devices(self):
@@ -215,26 +220,28 @@ class MainWindow(tk.Tk):
         date_to_fetch = datetime.strftime(time_now, "%Y/%m-%d")
         setattr(self, 'date_to_fetch', date_to_fetch)
 
-        # print('calling getprice from timer_loop')
         setattr(self, 'todays_price', self.getprice())
 
-        self.update_list()
+        # self.update_list()
+        self.ratioprice()   # Run this to update ratio in case of date change
 
         if self.pricenow < self.triggerprice:
-            if self.lastaction == 'ON':
+            if self.lastaction == 'ON' and self.checkoverride_val.get() != 'ON':
                 self.lastaction_label['text'] = 'Last action: ON'
                 print('Already ON')
             else:
                 self.lastaction_label['text'] = 'Last action: Switching ON'
                 print('Switching ON')
+                # SWITCH ACTION GOES HERE
             self.lastaction = 'ON'
         else:
-            if self.lastaction == 'OFF':
+            if self.lastaction == 'OFF' and self.checkoverride_val.get() != 'ON':
                 self.lastaction_label['text'] = 'Last action: OFF'
                 print('Already OFF')
             else:
                 self.lastaction_label['text'] = 'Last action: Switching OFF'
                 print('Switching OFF')
+                # SWITCH ACTION GOES HERE
             self.lastaction = 'OFF'
 
         self.lastupdate['text'] = datetime.strftime(datetime.now(), "Last update: %H:%M:%S")
@@ -247,6 +254,9 @@ class MainWindow(tk.Tk):
 
         sum_price = 0
 
+        # Clear listbox here
+        self.pricelist.delete(0, 666)
+
         for index, hour in enumerate(self.todays_price):
 
             time_parsed = datetime.strptime(hour['time_start'], "%Y-%m-%dT%H:%M:%S%z")
@@ -257,6 +267,7 @@ class MainWindow(tk.Tk):
             sum_price += hour['SEK_per_kWh']
 
             if time_to_compare == time_nice:
+                self.pricelist.delete(index)
                 self.pricelist.insert(index, str(f"{time_nice}    {hour['SEK_per_kWh']:.2f} SEK    Current"))
                 setattr(self, 'pricenow', hour['SEK_per_kWh'])
 
