@@ -14,11 +14,17 @@ class MainWindow(tk.Tk):
 
         config = configparser.ConfigParser()
         config.read('settings.ini')
-        tell_api = str(config['APP']['TELL_API'])
-        auth = str(config['APP']['AUTH'])
+        self.area = str(config['APP']['AREA'])
+        self.el_api = str(config['APP']['EL_API'])
+        self.request_timeout = int(config['APP']['REQUEST_TIMEOUT'])
+        self.delayseconds = int(config['APP']['UPDATE_INTERVAL']) * 1000
+        self.tell_api = str(config['APP']['TELL_API'])
+        self.auth = str(config['APP']['AUTH'])
         self.timeout = int(config['APP']['REQUEST_TIMEOUT'])
+        self.mode = str(config['APP']['MODE'])
 
         self.triggerprice = 0
+        self.lastaction = ''
 
         self.title("Styr Telldusenheter efter elpriset va")
 
@@ -27,11 +33,11 @@ class MainWindow(tk.Tk):
 
         self.api_text = ttk.Label(self.telldus, text="Tellstick IP:")
         self.api_entry = ttk.Entry(self.telldus)
-        self.api_entry.insert(0, tell_api)
+        self.api_entry.insert(0, self.tell_api)
 
         self.auth_text = ttk.Label(self.telldus, text="Authorization:")
         self.auth_entry = ttk.Entry(self.telldus)
-        self.auth_entry.insert(0, auth)
+        self.auth_entry.insert(0, self.auth)
 
         self.device_text = ttk.Label(self.telldus, text="Device:")
         self.devicelist_text = ttk.Label(self.telldus, text="0 devices found")
@@ -41,7 +47,7 @@ class MainWindow(tk.Tk):
 
         self.on = ttk.Button(self.telldus, text="On", command=self.onbutton)
         self.off = ttk.Button(self.telldus, text="Off", command=self.offbutton)
-        self.refresh = ttk.Button(self.telldus, text="Refresh devices", command=self.refresh_list)
+        self.refresh = ttk.Button(self.telldus, text="Refresh devices", command=self.refresh_devices)
 
         self.telldus.grid(column=0, row=0, padx=5, pady=5, ipady=5, sticky="nw")
         self.api_text.grid(column=0, row=0, sticky="w", padx=10, pady=4)
@@ -57,7 +63,7 @@ class MainWindow(tk.Tk):
         self.on.grid(column=1, row=5, columnspan=2)
         self.off.grid(column=1, row=6, columnspan=2)
 
-        self.refresh_list()
+        self.refresh_devices()
 
         # List for prices
         self.priceframe = ttk.Frame(self, borderwidth=0, relief='raised')
@@ -100,10 +106,18 @@ class MainWindow(tk.Tk):
         self.lastupdate = ttk.Label(self, text="Last update: N/A")
         self.lastupdate.grid(column=0, row=2, padx=5, pady=5, ipady=5, sticky="nw", columnspan=2)
 
+        # Last action
+        self.lastaction_label = ttk.Label(self, text="Last action: N/A")
+        self.lastaction_label.grid(column=0, row=3, padx=5, pady=5, ipady=5, sticky="nw", columnspan=2)
+
+        self.lastupdate['text'] = datetime.strftime(datetime.now(), "Last update: %H:%M:%S")
+        self.lastupdate.after(self.delayseconds, self.timer_loop)
+
+
     def fixedprice(self):
         if self.controltype.get() == "fixed":
             self.triggerprice = float(self.pricefixed_val.get())
-            update_list(self)
+            self.update_list()
             print(f"fixed: {self.triggerprice}")
         return
 
@@ -116,11 +130,11 @@ class MainWindow(tk.Tk):
 
             prices.sort()
             self.triggerprice = float(prices[int(self.priceratio_val.get())])
-            update_list(self)
+            self.update_list()
             print(f"ratio: {self.priceratio_val.get()} price: {self.triggerprice}")
         return
 
-    def refresh_list(self):
+    def refresh_devices(self):
 
         dict_data = {}
         # command_request = 'http://' + API_IP + '/api/devices/list'
@@ -153,7 +167,6 @@ class MainWindow(tk.Tk):
 
             self.device_combo.set("Select one")
             self.device_combo['values'] = device_list
-
         return
 
     def onbutton(self):
@@ -196,81 +209,95 @@ class MainWindow(tk.Tk):
 
         return
 
+    def timer_loop(self):
 
-def update_list(root):
-    for index, hour in enumerate(root.todays_price):
-        if root.triggerprice > hour['SEK_per_kWh']:
-            root.pricelist.itemconfigure(index, background='#66ff66')
+        time_now = datetime.now()
+        date_to_fetch = datetime.strftime(time_now, "%Y/%m-%d")
+        setattr(self, 'date_to_fetch', date_to_fetch)
+
+        # print('calling getprice from timer_loop')
+        setattr(self, 'todays_price', self.getprice())
+
+        self.update_list()
+
+        if self.pricenow < self.triggerprice:
+            if self.lastaction == 'ON':
+                self.lastaction_label['text'] = 'Last action: ON'
+                print('Already ON')
+            else:
+                self.lastaction_label['text'] = 'Last action: Switching ON'
+                print('Switching ON')
+            self.lastaction = 'ON'
         else:
-            root.pricelist.itemconfigure(index, background='white')
+            if self.lastaction == 'OFF':
+                self.lastaction_label['text'] = 'Last action: OFF'
+                print('Already OFF')
+            else:
+                self.lastaction_label['text'] = 'Last action: Switching OFF'
+                print('Switching OFF')
+            self.lastaction = 'OFF'
 
-    root.lastupdate['text'] = datetime.strftime(datetime.now(), "Last update: %H:%M:%S")
+        self.lastupdate['text'] = datetime.strftime(datetime.now(), "Last update: %H:%M:%S")
+        self.after(self.delayseconds, self.timer_loop)
 
+    def update_list(self):
 
-def getprice(date, area):
+        time_now = datetime.now()
+        time_to_compare = datetime.strftime(time_now, "%Y-%m-%d    %H:00")
 
-    config = configparser.ConfigParser()
-    config.read('settings.ini')
-    el_api = str(config['APP']['EL_API'])
-    request_timeout = int(config['APP']['REQUEST_TIMEOUT'])
+        sum_price = 0
 
-    # GET https://www.elprisetjustnu.se/api/v1/prices/2023/01-15_SE3.json
-    command_request = el_api + date + '_' + area + '.json'
-    print(command_request)
-    try:
-        json_data = requests.request("GET", command_request, headers='', data='', timeout=request_timeout)
-        return json_data.json()
+        for index, hour in enumerate(self.todays_price):
 
-    except Exception as e:
-        print(e)
+            time_parsed = datetime.strptime(hour['time_start'], "%Y-%m-%dT%H:%M:%S%z")
+            time_nice = time_parsed.strftime("%Y-%m-%d    %H:00")
+
+            self.pricelist.insert(index, str(f"{time_nice}    {hour['SEK_per_kWh']:.2f} SEK"))
+
+            sum_price += hour['SEK_per_kWh']
+
+            if time_to_compare == time_nice:
+                self.pricelist.insert(index, str(f"{time_nice}    {hour['SEK_per_kWh']:.2f} SEK    Current"))
+                setattr(self, 'pricenow', hour['SEK_per_kWh'])
+
+            if self.triggerprice > hour['SEK_per_kWh']:
+                self.pricelist.itemconfigure(index, background='#66ff66')
+            else:
+                self.pricelist.itemconfigure(index, background='white')
+
+        avg_price = sum_price / len(self.todays_price)
+        self.avgpricecalc['text'] = f"{avg_price:.2f} SEK / KWh"
+
+    def getprice(self):
+
+        # GET https://www.elprisetjustnu.se/api/v1/prices/2023/01-15_SE3.json
+        command_request = self.el_api + self.date_to_fetch + '_' + self.area + '.json'
+        print('getprice ' + command_request)
+        try:
+            json_data = requests.request("GET", command_request, headers='', data='', timeout=self.request_timeout)
+            return json_data.json()
+
+        except Exception as e:
+            print(e)
 
 
 def main():
 
-    config = configparser.ConfigParser()
-    config.read('settings.ini')
-    area = str(config['APP']['AREA'])
-
-    time_now = datetime.now()
-    time_to_compare = datetime.strftime(time_now, "%Y-%m-%d    %H:00")
-
-    date_to_fetch = datetime.strftime(time_now, "%Y/%m-%d")
-
     root = MainWindow()
 
-    root.todays_price = getprice(date_to_fetch, area)
-    root.areatext['text'] = area
+    time_now = datetime.now()
+    root.date_to_fetch = datetime.strftime(time_now, "%Y/%m-%d")
 
-    sum_price = 0
+    root.todays_price = root.getprice()
+    root.areatext['text'] = root.area
 
-    for index, hour in enumerate(root.todays_price):
-        # time_parsed = parser.parse(hour['time_start'])
-        time_parsed = datetime.strptime(hour['time_start'], "%Y-%m-%dT%H:%M:%S%z")
-        time_nice = time_parsed.strftime("%Y-%m-%d    %H:00")
-
-        root.pricelist.insert(index, str(f"{time_nice}    {hour['SEK_per_kWh']:.2f} SEK"))
-
-        sum_price += hour['SEK_per_kWh']
-
-        if time_to_compare == time_nice:
-            root.pricelist.insert(index, str(f"{time_nice}    {hour['SEK_per_kWh']:.2f} SEK    Current"))
-            # root.pricelist.itemconfigure(index, background='#f0f0ff')
-            # root.pricelist.itemconfigure(index, background='orange')
-
-    avg_price = sum_price / len(root.todays_price)
-    root.avgpricecalc['text'] = f"{avg_price:.2f} SEK / KWh"
-
-    if str(config['APP']['MODE']) == 'fixed':
+    if root.mode == 'fixed':
         root.fixedprice()
 
-    if str(config['APP']['MODE']) == 'ratio':
+    if root.mode == 'ratio':
         root.ratioprice()
 
-    update_list(root)
-
     root.mainloop()
-
-    #  int(config['APP']['UPDATE_INTERVAL'] * 1000)
 
 
 #   Main loop
