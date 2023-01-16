@@ -4,7 +4,6 @@ import tkinter as tk
 from tkinter import ttk, Listbox
 import requests
 import configparser
-from dateutil import parser
 from datetime import datetime
 
 
@@ -96,6 +95,10 @@ class MainWindow(tk.Tk):
 
         self.setfixed.grid(column=1, row=2, sticky="e")
         self.setratio.grid(column=1, row=3, sticky="e")
+
+        # Last updated
+        self.lastupdate = ttk.Label(self, text="Last update: N/A")
+        self.lastupdate.grid(column=0, row=2, padx=5, pady=5, ipady=5, sticky="nw", columnspan=2)
 
     def fixedprice(self):
         if self.controltype.get() == "fixed":
@@ -196,16 +199,12 @@ class MainWindow(tk.Tk):
 
 def update_list(root):
     for index, hour in enumerate(root.todays_price):
-        # if root.controltype.get() == "fixed":
         if root.triggerprice > hour['SEK_per_kWh']:
             root.pricelist.itemconfigure(index, background='#66ff66')
         else:
             root.pricelist.itemconfigure(index, background='white')
-        # else:
-        #     if root.priceratio_price > hour['SEK_per_kWh']:
-        #         root.pricelist.itemconfigure(index, background='#66ff66')
-        #     else:
-        #         root.pricelist.itemconfigure(index, background='white')
+
+    root.lastupdate['text'] = datetime.strftime(datetime.now(), "Last update: %H:%M:%S")
 
 
 def getprice(date, area):
@@ -245,7 +244,8 @@ def main():
     sum_price = 0
 
     for index, hour in enumerate(root.todays_price):
-        time_parsed = parser.parse(hour['time_start'])
+        # time_parsed = parser.parse(hour['time_start'])
+        time_parsed = datetime.strptime(hour['time_start'], "%Y-%m-%dT%H:%M:%S%z")
         time_nice = time_parsed.strftime("%Y-%m-%d    %H:00")
 
         root.pricelist.insert(index, str(f"{time_nice}    {hour['SEK_per_kWh']:.2f} SEK"))
@@ -269,6 +269,8 @@ def main():
     update_list(root)
 
     root.mainloop()
+
+    #  int(config['APP']['UPDATE_INTERVAL'] * 1000)
 
 
 #   Main loop
