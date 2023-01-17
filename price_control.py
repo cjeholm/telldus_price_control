@@ -7,6 +7,7 @@ import configparser
 from datetime import datetime
 import os
 import json
+import subprocess
 
 
 class MainWindowBuilder(tk.Tk):
@@ -25,12 +26,14 @@ class MainWindowBuilder(tk.Tk):
         self.timeout = int(config['APP']['REQUEST_TIMEOUT'])
         self.mode = str(config['APP']['MODE'])
         self.override = str(config['APP']['OVERRIDE'])
+        self.oncommand = str(config['APP']['ON_COMMAND'])
+        self.offcommand = str(config['APP']['OFF_COMMAND'])
 
         self.triggerprice = 0
         self.lastaction = ''
         self.controldevicelist = {}
 
-        self.title("Styr Telldusenheter efter elpriset va")
+        self.title("Electricity Price Control v0.1")
 
         # Create left frame with Telldus stuff
         self.telldus = ttk.Labelframe(self, text="Telldus")
@@ -52,14 +55,14 @@ class MainWindowBuilder(tk.Tk):
 
         self.telldus.grid(column=0, row=0, padx=5, pady=5, ipady=5, sticky="nw")
         self.api_text.grid(column=0, row=0, sticky="w", padx=10, pady=4)
-        self.api_entry.grid(column=1, row=0, columnspan=2, padx=10, pady=4)
+        self.api_entry.grid(column=1, row=0, columnspan=2, padx=10, pady=4, ipadx=20)
         self.auth_text.grid(column=0, row=1, sticky="w", padx=10, pady=4)
-        self.auth_entry.grid(column=1, row=1, columnspan=2, padx=10, pady=4)
+        self.auth_entry.grid(column=1, row=1, columnspan=2, padx=10, pady=4, ipadx=20)
 
         self.devicelist_text.grid(column=1, row=3, columnspan=2, pady=12)
 
         self.device_text.grid(column=0, row=4, sticky="w", padx=10, pady=4)
-        self.device_combo.grid(column=1, row=4, columnspan=2, padx=0, pady=4)
+        self.device_combo.grid(column=1, row=4, columnspan=2, padx=0, pady=4, ipadx=12)
 
         self.on = ttk.Button(self.telldus, text="Turn On", command=self.onbutton)
         self.off = ttk.Button(self.telldus, text="Turn Off", command=self.offbutton)
@@ -93,7 +96,7 @@ class MainWindowBuilder(tk.Tk):
         self.pricefixed = ttk.Radiobutton(self.avgpriceframe, text="Fixed price", variable=self.controltype, value="fixed", command=self.fixedprice)
         self.priceratio = ttk.Radiobutton(self.avgpriceframe, text="Best hours", variable=self.controltype, value="ratio", command=self.ratioprice)
 
-        self.avgpriceframe.grid(column=0, row=1, padx=5, pady=5, ipady=5, sticky="nw", columnspan=2)
+        self.avgpriceframe.grid(column=0, row=1, padx=5, pady=4, ipady=5, sticky="nw", columnspan=2)
         self.arealabel.grid(column=0, row=0, padx=10, pady=0, sticky="w")
         self.areatext.grid(column=1, row=0, padx=10, pady=0, sticky="w")
         self.avgpricelabel.grid(column=0, row=1, padx=10, pady=0, sticky="w")
@@ -107,8 +110,8 @@ class MainWindowBuilder(tk.Tk):
         self.priceratio_val = tk.StringVar(None, str(config['APP']['RATIO']))
         self.setratio = ttk.Spinbox(self.avgpriceframe, from_=1, to=23, textvariable=self.priceratio_val, increment=1, command=self.ratioprice)
 
-        self.setfixed.grid(column=1, row=2, sticky="e")
-        self.setratio.grid(column=1, row=3, sticky="e")
+        self.setfixed.grid(column=1, row=2, sticky="e", ipadx=9)
+        self.setratio.grid(column=1, row=3, sticky="e", ipadx=9)
 
         # checkbox for override
         self.checkoverride_val = tk.StringVar(None, self.override)
@@ -116,12 +119,14 @@ class MainWindowBuilder(tk.Tk):
         self.checkoverride.grid(column=0, row=4, sticky="w", padx=7, pady=4)
 
         # Last updated
-        self.lastupdate = ttk.Label(self, text="Last update: N/A")
-        self.lastupdate.grid(column=1, row=4, padx=5, pady=2, sticky="nw", columnspan=2)
+        self.lastholder = ttk.Frame(self)
+        self.lastupdate = ttk.Label(self.lastholder, text="Last update: N/A")
+        self.lastholder.grid(column=2, row=6, padx=5, pady=0, sticky="nw", columnspan=2)
+        self.lastupdate.grid(column=0, row=0, padx=0, pady=0, sticky="nw")
 
         # Last action
-        self.lastaction_label = ttk.Label(self, text="Last action: N/A")
-        self.lastaction_label.grid(column=1, row=5, padx=5, pady=2, sticky="nw", columnspan=2)
+        self.lastaction_label = ttk.Label(self.lastholder, text="Last action: N/A")
+        self.lastaction_label.grid(column=0, row=1, padx=0, pady=0, sticky="nw")
 
         self.lastupdate['text'] = datetime.strftime(datetime.now(), "Last update: %H:%M:%S")
         self.lastupdate.after(self.delayseconds, self.timer_loop)
@@ -132,8 +137,22 @@ class MainWindowBuilder(tk.Tk):
         self.delete_btn = ttk.Button(self.deviceframe, text="Remove selected", command=self.remove_device)
 
         self.deviceframe.grid(column=0, row=2, padx=5, pady=5, rowspan=4, sticky="nw")
-        self.devicelist.grid(column=0, row=0, padx=4, pady=4)
+        self.devicelist.grid(column=0, row=0, padx=4, pady=4, ipadx=1)
         self.delete_btn.grid(column=0, row=1, sticky="nw", padx=8, pady=8)
+
+        # Custom On commands
+        self.customonframe = ttk.Labelframe(self, text="Custom On command")
+        self.customonentry = ttk.Entry(self.customonframe)
+        self.customonframe.grid(column=2, row=4, padx=5, pady=5, sticky="nw")
+        self.customonentry.grid(column=0, row=0, padx=5, pady=5, ipadx=58, columnspan=3)
+        self.customonentry.insert(0, self.oncommand)
+
+        # Custom Off commands
+        self.customoffframe = ttk.Labelframe(self, text="Custom Off command")
+        self.customoffentry = ttk.Entry(self.customoffframe)
+        self.customoffframe.grid(column=2, row=5, padx=5, pady=5, sticky="nw")
+        self.customoffentry.grid(column=0, row=0, padx=5, pady=5, ipadx=58, columnspan=3)
+        self.customoffentry.insert(0, self.offcommand)
 
     def add_device(self):
         device_string = self.device_combo.get()
@@ -291,6 +310,14 @@ class MainWindowBuilder(tk.Tk):
         self.after(self.delayseconds, self.timer_loop)
 
     def devices_on(self):
+
+        if self.customonentry.get():
+            print('Executing: ' + self.customonentry.get())
+            try:
+                subprocess.Popen(self.customonentry.get())
+            except:
+                pass
+
         for device_id in self.controldevicelist.keys():
 
             print(f"{device_id} on")
@@ -310,6 +337,14 @@ class MainWindowBuilder(tk.Tk):
         return
 
     def devices_off(self):
+
+        if self.customoffentry.get():
+            print('Executing: ' + self.customoffentry.get())
+            try:
+                subprocess.Popen(self.customoffentry.get())
+            except:
+                pass
+
         for device_id in self.controldevicelist.keys():
 
             print(f"{device_id} off")
