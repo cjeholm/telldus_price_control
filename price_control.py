@@ -5,6 +5,8 @@ from tkinter import ttk, Listbox
 import requests
 import configparser
 from datetime import datetime
+import os
+import json
 
 
 class MainWindowBuilder(tk.Tk):
@@ -73,7 +75,7 @@ class MainWindowBuilder(tk.Tk):
 
         # List for prices
         self.priceframe = ttk.Labelframe(self, text="Prices")
-        self.pricelist = Listbox(self.priceframe, height=24, width=50)
+        self.pricelist = Listbox(self.priceframe, height=24, width=40)
 
         self.priceframe.grid(column=2, row=0, padx=5, pady=5, rowspan=4, sticky="nw")
         self.pricelist.grid(column=0, row=0, padx=4, pady=4)
@@ -164,7 +166,7 @@ class MainWindowBuilder(tk.Tk):
         if self.controltype.get() == "fixed":
             self.triggerprice = float(self.pricefixed_val.get())
             self.update_list()
-            print(f"fixed: {self.triggerprice}")
+            # print(f"fixed: {self.triggerprice}")
         return
 
     def ratioprice(self):
@@ -176,7 +178,7 @@ class MainWindowBuilder(tk.Tk):
 
             prices.sort()
             self.triggerprice = float(prices[int(self.priceratio_val.get())])
-            print(f"ratio: {self.priceratio_val.get()} price: {self.triggerprice}")
+            # print(f"ratio: {self.priceratio_val.get()} price: {self.triggerprice}")
         self.update_list()
         return
 
@@ -347,7 +349,7 @@ class MainWindowBuilder(tk.Tk):
 
             if time_to_compare == time_nice:
                 self.pricelist.delete(index)
-                self.pricelist.insert(index, str(f"{time_nice}    {hour['SEK_per_kWh']:.2f} SEK    Current"))
+                self.pricelist.insert(index, str(f"{time_nice}    {hour['SEK_per_kWh']:.2f} SEK    <-- Now"))
                 setattr(self, 'pricenow', hour['SEK_per_kWh'])
 
             if self.triggerprice > hour['SEK_per_kWh']:
@@ -360,15 +362,37 @@ class MainWindowBuilder(tk.Tk):
 
     def getprice(self):
 
-        # GET https://www.elprisetjustnu.se/api/v1/prices/2023/01-15_SE3.json
-        command_request = self.el_api + self.date_to_fetch + '_' + self.area + '.json'
-        print('getprice ' + command_request)
-        try:
-            json_data = requests.request("GET", command_request, headers='', data='', timeout=self.request_timeout)
-            return json_data.json()
+        log_filename = self.date_to_fetch + '_' + self.area + '.json'
+        log_filename = log_filename.replace("/", "-")
 
-        except Exception as e:
-            print(e)
+        if not os.path.exists('log/'):
+            print('making log dir')
+            os.mkdir('log')
+
+        if not os.path.isfile('log/' + log_filename):
+            print('creating price log file')
+            with open('log/' + log_filename, 'w') as fp:
+                #fp.write('This is first line')
+                #pass
+
+                # GET https://www.elprisetjustnu.se/api/v1/prices/2023/01-15_SE3.json
+                command_request = self.el_api + self.date_to_fetch + '_' + self.area + '.json'
+                print('Fetching ' + command_request)
+                try:
+                    json_data = requests.request("GET", command_request, headers='', data='', timeout=self.request_timeout)
+                    #return json_data.json()
+
+                except Exception as e:
+                    print(e)
+
+                json.dump(json_data.json(), fp)
+                #fp.write(write)
+                return json_data.json()
+                pass
+
+        with open(r'log/' + log_filename, 'r') as fp:
+            print('Reading from local file ' + log_filename)
+            return json.load(fp)
 
 
 def main():
