@@ -7,7 +7,7 @@ import configparser
 from datetime import datetime
 
 
-class MainWindow(tk.Tk):
+class MainWindowBuilder(tk.Tk):
 
     def __init__(self):
         super().__init__()
@@ -26,6 +26,7 @@ class MainWindow(tk.Tk):
 
         self.triggerprice = 0
         self.lastaction = ''
+        self.controldevicelist = {}
 
         self.title("Styr Telldusenheter efter elpriset va")
 
@@ -42,13 +43,10 @@ class MainWindow(tk.Tk):
 
         self.device_text = ttk.Label(self.telldus, text="Device:")
         self.devicelist_text = ttk.Label(self.telldus, text="0 devices found")
-        self.device_combo = ttk.Combobox(self.telldus)
+        self.device_combo = ttk.Combobox(self.telldus, state="readonly")
         self.device_combo.insert(0, "No devices")
         self.device_combo['values'] = ()
-
-        self.on = ttk.Button(self.telldus, text="On", command=self.onbutton)
-        self.off = ttk.Button(self.telldus, text="Off", command=self.offbutton)
-        self.refresh = ttk.Button(self.telldus, text="Refresh devices", command=self.refresh_devices)
+        # self.device_combo['state'] = "READONLY"
 
         self.telldus.grid(column=0, row=0, padx=5, pady=5, ipady=5, sticky="nw")
         self.api_text.grid(column=0, row=0, sticky="w", padx=10, pady=4)
@@ -57,12 +55,19 @@ class MainWindow(tk.Tk):
         self.auth_entry.grid(column=1, row=1, columnspan=2, padx=10, pady=4)
 
         self.devicelist_text.grid(column=1, row=3, columnspan=2, pady=12)
-        self.refresh.grid(column=1, row=2, columnspan=2)
 
         self.device_text.grid(column=0, row=4, sticky="w", padx=10, pady=4)
         self.device_combo.grid(column=1, row=4, columnspan=2, padx=0, pady=4)
-        self.on.grid(column=1, row=5, columnspan=2)
-        self.off.grid(column=1, row=6, columnspan=2)
+
+        self.on = ttk.Button(self.telldus, text="Turn On", command=self.onbutton)
+        self.off = ttk.Button(self.telldus, text="Turn Off", command=self.offbutton)
+        self.on.grid(column=1, row=5, sticky="w", padx=8)
+        self.off.grid(column=1, row=6, sticky="w", padx=8)
+
+        self.add_btn = ttk.Button(self.telldus, text="Add", command=self.add_device)
+        self.refresh = ttk.Button(self.telldus, text="Refresh", command=self.refresh_devices)
+        self.add_btn.grid(column=2, row=5, sticky="e", padx=8)
+        self.refresh.grid(column=2, row=6, sticky="e", padx=8)
 
         self.refresh_devices()
 
@@ -70,7 +75,7 @@ class MainWindow(tk.Tk):
         self.priceframe = ttk.Labelframe(self, text="Prices")
         self.pricelist = Listbox(self.priceframe, height=24, width=50)
 
-        self.priceframe.grid(column=2, row=0, padx=5, pady=5, rowspan=20, sticky="nw")
+        self.priceframe.grid(column=2, row=0, padx=5, pady=5, rowspan=4, sticky="nw")
         self.pricelist.grid(column=0, row=0, padx=4, pady=4)
 
         # List for avg price
@@ -110,14 +115,50 @@ class MainWindow(tk.Tk):
 
         # Last updated
         self.lastupdate = ttk.Label(self, text="Last update: N/A")
-        self.lastupdate.grid(column=0, row=2, padx=5, pady=5, sticky="nw", columnspan=2)
+        self.lastupdate.grid(column=1, row=4, padx=5, pady=2, sticky="nw", columnspan=2)
 
         # Last action
         self.lastaction_label = ttk.Label(self, text="Last action: N/A")
-        self.lastaction_label.grid(column=0, row=3, padx=5, pady=5, sticky="nw", columnspan=2)
+        self.lastaction_label.grid(column=1, row=5, padx=5, pady=2, sticky="nw", columnspan=2)
 
         self.lastupdate['text'] = datetime.strftime(datetime.now(), "Last update: %H:%M:%S")
         self.lastupdate.after(self.delayseconds, self.timer_loop)
+
+        # List for devices to control
+        self.deviceframe = ttk.Labelframe(self, text="Devices to control")
+        self.devicelist = Listbox(self.deviceframe, height=6, width=45)
+        self.delete_btn = ttk.Button(self.deviceframe, text="Remove selected", command=self.remove_device)
+
+        self.deviceframe.grid(column=0, row=2, padx=5, pady=5, rowspan=4, sticky="nw")
+        self.devicelist.grid(column=0, row=0, padx=4, pady=4)
+        self.delete_btn.grid(column=0, row=1, sticky="nw", padx=8, pady=8)
+
+    def add_device(self):
+        device_string = self.device_combo.get()
+        device_id = device_string.split(" ")[0]
+        print(f"{device_id} added")
+
+        if device_string == "Select one":
+            return
+
+        self.controldevicelist[device_id] = device_string
+
+        self.devicelist.delete(0, 666)
+        for device in self.controldevicelist.values():
+            self.devicelist.insert(0, device)
+
+    def remove_device(self):
+        # device_string = self.device_combo.get()
+        selected = self.devicelist.curselection()
+        device_string = self.devicelist.get(selected)
+        device_id = device_string.split(" ")[0]
+        print(f"{device_id} added")
+
+        self.controldevicelist.pop(device_id, None)
+
+        self.devicelist.delete(0, 666)
+        for device in self.controldevicelist.values():
+            self.devicelist.insert(0, device)
 
     def fixedprice(self):
         if self.controltype.get() == "fixed":
@@ -232,7 +273,7 @@ class MainWindow(tk.Tk):
             else:
                 self.lastaction_label['text'] = 'Last action: Switching ON'
                 print('Switching ON')
-                # SWITCH ACTION GOES HERE
+                self.devices_on()
             self.lastaction = 'ON'
         else:
             if self.lastaction == 'OFF' and self.checkoverride_val.get() != 'ON':
@@ -241,11 +282,49 @@ class MainWindow(tk.Tk):
             else:
                 self.lastaction_label['text'] = 'Last action: Switching OFF'
                 print('Switching OFF')
-                # SWITCH ACTION GOES HERE
+                self.devices_off()
             self.lastaction = 'OFF'
 
         self.lastupdate['text'] = datetime.strftime(datetime.now(), "Last update: %H:%M:%S")
         self.after(self.delayseconds, self.timer_loop)
+
+    def devices_on(self):
+        for device_id in self.controldevicelist.keys():
+
+            print(f"{device_id} on")
+
+            command_request = 'http://' + self.api_entry.get() + '/api/device/turnOn'
+            payload = 'id=' + device_id
+            headers = {
+                'Authorization': self.auth_entry.get()
+            }
+            try:
+                json_data = requests.request("GET", command_request, headers=headers, params=payload, timeout=self.timeout)
+                dict_data = json_data.json()
+                print(dict_data)
+
+            except Exception as e:
+                print(e)
+        return
+
+    def devices_off(self):
+        for device_id in self.controldevicelist.keys():
+
+            print(f"{device_id} off")
+
+            command_request = 'http://' + self.api_entry.get() + '/api/device/turnOff'
+            payload = 'id=' + device_id
+            headers = {
+                'Authorization': self.auth_entry.get()
+            }
+            try:
+                json_data = requests.request("GET", command_request, headers=headers, params=payload, timeout=self.timeout)
+                dict_data = json_data.json()
+                print(dict_data)
+
+            except Exception as e:
+                print(e)
+        return
 
     def update_list(self):
 
@@ -294,21 +373,22 @@ class MainWindow(tk.Tk):
 
 def main():
 
-    root = MainWindow()
+    mainwindow = MainWindowBuilder()
+    mainwindow.iconbitmap("sausage_icon_211243.ico")
 
     time_now = datetime.now()
-    root.date_to_fetch = datetime.strftime(time_now, "%Y/%m-%d")
+    mainwindow.date_to_fetch = datetime.strftime(time_now, "%Y/%m-%d")
 
-    root.todays_price = root.getprice()
-    root.areatext['text'] = root.area
+    mainwindow.todays_price = mainwindow.getprice()
+    mainwindow.areatext['text'] = mainwindow.area
 
-    if root.mode == 'fixed':
-        root.fixedprice()
+    if mainwindow.mode == 'fixed':
+        mainwindow.fixedprice()
 
-    if root.mode == 'ratio':
-        root.ratioprice()
+    if mainwindow.mode == 'ratio':
+        mainwindow.ratioprice()
 
-    root.mainloop()
+    mainwindow.mainloop()
 
 
 #   Main loop
