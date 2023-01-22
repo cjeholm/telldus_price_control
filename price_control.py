@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import tkinter as tk
-from tkinter import ttk, Listbox
+from tkinter import ttk, Listbox, Canvas
 import requests
 import configparser
 from datetime import datetime
@@ -33,7 +33,7 @@ class MainWindowBuilder(tk.Tk):
         self.lastaction = ''
         self.controldevicelist = {}
 
-        self.title("Electricity Price Control v0.1")
+        self.title("Electricity Price Control v0.2")
 
         # Create left frame with Telldus stuff
         self.telldus = ttk.Labelframe(self, text="Telldus")
@@ -154,6 +154,15 @@ class MainWindowBuilder(tk.Tk):
         self.customoffentry.grid(column=0, row=0, padx=5, pady=5, ipadx=58, columnspan=3)
         self.customoffentry.insert(0, self.offcommand)
 
+        # Graph
+        self.graphheight = 400
+        self.graphwidth = 480
+        self.graphframe = ttk.Labelframe(self, text="Price graph")
+        self.graph = Canvas(self.graphframe, height=self.graphheight, width=self.graphwidth, bg="white")
+
+        self.graphframe.grid(column=3, row=0, padx=5, pady=5, rowspan=4, sticky="nw")
+        self.graph.grid(column=0, row=0, padx=4, pady=4)
+
     def add_device(self):
         device_string = self.device_combo.get()
         device_id = device_string.split(" ")[0]
@@ -186,6 +195,7 @@ class MainWindowBuilder(tk.Tk):
             self.triggerprice = float(self.pricefixed_val.get())
             self.update_list()
             # print(f"fixed: {self.triggerprice}")
+
         return
 
     def ratioprice(self):
@@ -372,6 +382,7 @@ class MainWindowBuilder(tk.Tk):
 
         # Clear listbox here
         self.pricelist.delete(0, 666)
+        self.graph.delete("all")
 
         for index, hour in enumerate(self.todays_price):
 
@@ -379,6 +390,30 @@ class MainWindowBuilder(tk.Tk):
             time_nice = time_parsed.strftime("%Y-%m-%d    %H:00")
 
             self.pricelist.insert(index, str(f"{time_nice}    {hour['SEK_per_kWh']:.2f} SEK"))
+
+            offset = 3
+            spacing = 20
+            self.bar_start_x = index * spacing + offset
+
+            bar_height = hour['SEK_per_kWh'] * 100
+            self.bar_start_y = self.graphheight - bar_height
+
+            bar_width = 16
+            self.bar_end_x = self.bar_start_x + bar_width
+            self.bar_end_y = self.graphheight
+
+            #
+            # offset = 5
+            # spacing = 15
+            # bar_start_x = index * spacing + offset
+            # bar_start_y = 0
+            # bar_height = hour['SEK_per_kWh'] * 100
+            # bar_width = 10
+            # bar_end_x = bar_start_x + bar_width
+            # bar_end_y = bar_height
+            #
+            self.graph.create_rectangle(self.bar_start_x, self.bar_start_y, self.bar_end_x, self.bar_end_y, fill="red")
+            # Canvas.create_rectangle(x1, y1, x2, y2, options = …): It is used to create rectangle and square.
 
             sum_price += hour['SEK_per_kWh']
 
@@ -389,8 +424,15 @@ class MainWindowBuilder(tk.Tk):
 
             if self.triggerprice > hour['SEK_per_kWh']:
                 self.pricelist.itemconfigure(index, background='#66ff66')
-            else:
-                self.pricelist.itemconfigure(index, background='white')
+                self.graph.create_rectangle(self.bar_start_x, self.bar_start_y, self.bar_end_x, self.bar_end_y,
+                                            fill='#66ff66')
+
+            if self.controltype.get() == "fixed":
+                startx = 0
+                starty = self.graphheight - self.triggerprice * 100
+                endx = self.graphwidth
+                endy = starty
+                self.graph.create_line(startx, starty, endx, endy, width="2", fill="blue")
 
         avg_price = sum_price / len(self.todays_price)
         self.avgpricecalc['text'] = f"{avg_price:.2f} SEK / KWh"
