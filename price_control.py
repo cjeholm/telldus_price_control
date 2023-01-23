@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# Telldus Price Control
+# By Conny Holm 2023
+
 import tkinter as tk
 from tkinter import ttk, Listbox, Canvas
 import requests
