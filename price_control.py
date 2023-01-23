@@ -80,15 +80,21 @@ class MainWindowBuilder(tk.Tk):
         self.priceframe = ttk.Labelframe(self, text="Prices")
         self.pricelist = Listbox(self.priceframe, height=24, width=40)
 
-        self.priceframe.grid(column=2, row=0, padx=5, pady=5, rowspan=4, sticky="nw")
+        self.priceframe.grid(column=2, row=0, padx=5, pady=5, ipady=6, rowspan=10, sticky="nw")
         self.pricelist.grid(column=0, row=0, padx=4, pady=4)
 
-        # List for avg price
+        # Price control
         self.avgpriceframe = ttk.Labelframe(self, text="Price control")
         self.arealabel = ttk.Label(self.avgpriceframe, text="Price area:")
         self.areatext = ttk.Label(self.avgpriceframe, text="Unknown")
         self.avgpricelabel = ttk.Label(self.avgpriceframe, text="Avg price:")
         self.avgpricecalc = ttk.Label(self.avgpriceframe, text="Unknown")
+
+        self.avgpriceframe.grid(column=3, row=4, padx=5, pady=9, ipady=10, sticky="nw", columnspan=1, rowspan="6")
+        self.arealabel.grid(column=0, row=0, padx=2, pady=0, sticky="w")
+        self.areatext.grid(column=1, row=0, padx=2, pady=0, sticky="w")
+        self.avgpricelabel.grid(column=0, row=1, padx=10, pady=0, sticky="w")
+        self.avgpricecalc.grid(column=1, row=1, padx=10, pady=0, sticky="w")
 
         # Radiobuttons
 
@@ -96,13 +102,8 @@ class MainWindowBuilder(tk.Tk):
         self.pricefixed = ttk.Radiobutton(self.avgpriceframe, text="Fixed price", variable=self.controltype, value="fixed", command=self.fixedprice)
         self.priceratio = ttk.Radiobutton(self.avgpriceframe, text="Best hours", variable=self.controltype, value="ratio", command=self.ratioprice)
 
-        self.avgpriceframe.grid(column=0, row=1, padx=5, pady=4, ipady=5, sticky="nw", columnspan=2)
-        self.arealabel.grid(column=0, row=0, padx=10, pady=0, sticky="w")
-        self.areatext.grid(column=1, row=0, padx=10, pady=0, sticky="w")
-        self.avgpricelabel.grid(column=0, row=1, padx=10, pady=0, sticky="w")
-        self.avgpricecalc.grid(column=1, row=1, padx=10, pady=0, sticky="w")
-        self.pricefixed.grid(column=0, row=2, padx=10, pady=0, sticky="w")
-        self.priceratio.grid(column=0, row=3, padx=10, pady=0, sticky="w")
+        self.pricefixed.grid(column=0, row=2, padx=1, pady=0, sticky="w")
+        self.priceratio.grid(column=0, row=3, padx=1, pady=0, sticky="w")
 
         # Spinboxes
         self.pricefixed_val = tk.StringVar(None, str(config['APP']['PRICE']))
@@ -110,8 +111,8 @@ class MainWindowBuilder(tk.Tk):
         self.priceratio_val = tk.StringVar(None, str(config['APP']['RATIO']))
         self.setratio = ttk.Spinbox(self.avgpriceframe, from_=1, to=23, textvariable=self.priceratio_val, increment=1, command=self.ratioprice)
 
-        self.setfixed.grid(column=1, row=2, sticky="e", ipadx=9)
-        self.setratio.grid(column=1, row=3, sticky="e", ipadx=9)
+        self.setfixed.grid(column=1, row=2, sticky="e", ipadx=2)
+        self.setratio.grid(column=1, row=3, sticky="e", ipadx=2)
 
         # checkbox for override
         self.checkoverride_val = tk.StringVar(None, self.override)
@@ -121,7 +122,7 @@ class MainWindowBuilder(tk.Tk):
         # Last updated
         self.lastholder = ttk.Frame(self)
         self.lastupdate = ttk.Label(self.lastholder, text="Last update: N/A")
-        self.lastholder.grid(column=2, row=6, padx=5, pady=0, sticky="nw", columnspan=2)
+        self.lastholder.grid(column=4, row=6, padx=5, pady=0, sticky="nw", columnspan=1)
         self.lastupdate.grid(column=0, row=0, padx=0, pady=0, sticky="nw")
 
         # Last action
@@ -133,34 +134,34 @@ class MainWindowBuilder(tk.Tk):
 
         # List for devices to control
         self.deviceframe = ttk.Labelframe(self, text="Devices to control")
-        self.devicelist = Listbox(self.deviceframe, height=6, width=45)
+        self.devicelist = Listbox(self.deviceframe, height=8, width=45)
         self.delete_btn = ttk.Button(self.deviceframe, text="Remove selected", command=self.remove_device)
 
-        self.deviceframe.grid(column=0, row=2, padx=5, pady=5, rowspan=4, sticky="nw")
+        self.deviceframe.grid(column=0, row=1, padx=5, pady=1, rowspan=8, sticky="nw")
         self.devicelist.grid(column=0, row=0, padx=4, pady=4, ipadx=1)
         self.delete_btn.grid(column=0, row=1, sticky="nw", padx=8, pady=8)
 
         # Custom On commands
         self.customonframe = ttk.Labelframe(self, text="Custom On command")
         self.customonentry = ttk.Entry(self.customonframe)
-        self.customonframe.grid(column=2, row=4, padx=5, pady=5, sticky="nw")
-        self.customonentry.grid(column=0, row=0, padx=5, pady=5, ipadx=58, columnspan=3)
+        self.customonframe.grid(column=4, row=4, padx=5, pady=9, sticky="nw")
+        self.customonentry.grid(column=0, row=0, padx=5, pady=5, ipadx=46, columnspan=1)
         self.customonentry.insert(0, self.oncommand)
 
         # Custom Off commands
         self.customoffframe = ttk.Labelframe(self, text="Custom Off command")
         self.customoffentry = ttk.Entry(self.customoffframe)
-        self.customoffframe.grid(column=2, row=5, padx=5, pady=5, sticky="nw")
-        self.customoffentry.grid(column=0, row=0, padx=5, pady=5, ipadx=58, columnspan=3)
+        self.customoffframe.grid(column=4, row=5, padx=5, pady=0, sticky="nw")
+        self.customoffentry.grid(column=0, row=0, padx=5, pady=5, ipadx=46, columnspan=1)
         self.customoffentry.insert(0, self.offcommand)
 
         # Graph
-        self.graphheight = 200
-        self.graphwidth = 480
+        self.graphheight = 230
+        self.graphwidth = 500
         self.graphframe = ttk.Labelframe(self, text="Price graph")
         self.graph = Canvas(self.graphframe, height=self.graphheight, width=self.graphwidth, bg="white")
 
-        self.graphframe.grid(column=3, row=0, padx=5, pady=5, rowspan=4, sticky="nw")
+        self.graphframe.grid(column=3, row=0, padx=5, pady=5, rowspan=4, sticky="nw", columnspan="2")
         self.graph.grid(column=0, row=0, padx=4, pady=4)
 
     def add_device(self):
@@ -422,7 +423,7 @@ class MainWindowBuilder(tk.Tk):
         # Loop for graph
         for index, hour in enumerate(self.todays_price):
 
-            offset = 3
+            offset = 12
             spacing = 20
 
             max = 0.9
