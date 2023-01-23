@@ -155,7 +155,7 @@ class MainWindowBuilder(tk.Tk):
         self.customoffentry.insert(0, self.offcommand)
 
         # Graph
-        self.graphheight = 400
+        self.graphheight = 200
         self.graphwidth = 480
         self.graphframe = ttk.Labelframe(self, text="Price graph")
         self.graph = Canvas(self.graphframe, height=self.graphheight, width=self.graphwidth, bg="white")
@@ -379,41 +379,19 @@ class MainWindowBuilder(tk.Tk):
         time_to_compare = datetime.strftime(time_now, "%Y-%m-%d    %H:00")
 
         sum_price = 0
+        highest = 0
+        lowest = 9999
 
         # Clear listbox here
         self.pricelist.delete(0, 666)
-        self.graph.delete("all")
 
+        # Loop for list
         for index, hour in enumerate(self.todays_price):
 
             time_parsed = datetime.strptime(hour['time_start'], "%Y-%m-%dT%H:%M:%S%z")
             time_nice = time_parsed.strftime("%Y-%m-%d    %H:00")
 
             self.pricelist.insert(index, str(f"{time_nice}    {hour['SEK_per_kWh']:.2f} SEK"))
-
-            offset = 3
-            spacing = 20
-            self.bar_start_x = index * spacing + offset
-
-            bar_height = hour['SEK_per_kWh'] * 100
-            self.bar_start_y = self.graphheight - bar_height
-
-            bar_width = 16
-            self.bar_end_x = self.bar_start_x + bar_width
-            self.bar_end_y = self.graphheight
-
-            #
-            # offset = 5
-            # spacing = 15
-            # bar_start_x = index * spacing + offset
-            # bar_start_y = 0
-            # bar_height = hour['SEK_per_kWh'] * 100
-            # bar_width = 10
-            # bar_end_x = bar_start_x + bar_width
-            # bar_end_y = bar_height
-            #
-            self.graph.create_rectangle(self.bar_start_x, self.bar_start_y, self.bar_end_x, self.bar_end_y, fill="red")
-            # Canvas.create_rectangle(x1, y1, x2, y2, options = …): It is used to create rectangle and square.
 
             sum_price += hour['SEK_per_kWh']
 
@@ -424,18 +402,59 @@ class MainWindowBuilder(tk.Tk):
 
             if self.triggerprice > hour['SEK_per_kWh']:
                 self.pricelist.itemconfigure(index, background='#66ff66')
-                self.graph.create_rectangle(self.bar_start_x, self.bar_start_y, self.bar_end_x, self.bar_end_y,
-                                            fill='#66ff66')
 
-            if self.controltype.get() == "fixed":
-                startx = 0
-                starty = self.graphheight - self.triggerprice * 100
-                endx = self.graphwidth
-                endy = starty
-                self.graph.create_line(startx, starty, endx, endy, width="2", fill="blue")
+            if highest < hour['SEK_per_kWh']:
+                highest = hour['SEK_per_kWh']
+
+            if lowest > hour['SEK_per_kWh']:
+                lowest = hour['SEK_per_kWh']
 
         avg_price = sum_price / len(self.todays_price)
         self.avgpricecalc['text'] = f"{avg_price:.2f} SEK / KWh"
+        setattr(self, "highestprice", highest)
+        setattr(self, "lowestprice", lowest)
+
+        self.graph.delete("all")
+
+        # print(self.highestprice)
+        # print(self.lowestprice)
+
+        # Loop for graph
+        for index, hour in enumerate(self.todays_price):
+
+            offset = 3
+            spacing = 20
+
+            max = 0.9
+
+            setattr(self, "scaling", self.graphheight / self.highestprice * max)
+            # scaling = self.graphheight / hour['SEK_per_kWh']
+
+            bar_start_x = index * spacing + offset
+
+            bar_height = hour['SEK_per_kWh'] * self.scaling
+            bar_start_y = self.graphheight - bar_height
+
+            bar_width = 16
+            bar_end_x = bar_start_x + bar_width
+            bar_end_y = self.graphheight
+
+            if self.triggerprice <= hour['SEK_per_kWh']:
+                self.graph.create_rectangle(bar_start_x, bar_start_y, bar_end_x, bar_end_y, fill="red")
+                # Canvas.create_rectangle(x1, y1, x2, y2, options = …): It is used to create rectangle and square.
+
+            else:
+                self.graph.create_rectangle(bar_start_x, bar_start_y, bar_end_x, bar_end_y,
+                                            fill='#66ff66')
+
+        if self.controltype.get() == "fixed":
+            startx = 0
+            starty = self.graphheight - self.triggerprice * self.scaling
+            endx = self.graphwidth
+            endy = starty
+            self.graph.create_line(startx, starty, endx, endy, width="2", fill="blue")
+
+
 
     def getprice(self):
 
