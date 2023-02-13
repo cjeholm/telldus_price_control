@@ -498,7 +498,7 @@ class MainWindowBuilder(tk.Tk):
 def main():
 
     mainwindow = MainWindowBuilder()
-    mainwindow.iconbitmap("sausage_icon_211243.ico")
+    # mainwindow.iconbitmap("sausage_icon_211243.ico")
 
     time_now = datetime.now()
     mainwindow.date_to_fetch = datetime.strftime(time_now, "%Y/%m-%d")
