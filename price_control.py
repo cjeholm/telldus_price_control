@@ -4,10 +4,10 @@
 # By Conny Holm 2023
 
 import tkinter as tk
-from tkinter import ttk, Listbox, Canvas
+from tkinter import ttk, Listbox, Canvas, Scrollbar
 import requests
 import configparser
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import json
 import subprocess
@@ -33,10 +33,19 @@ class MainWindowBuilder(tk.Tk):
         self.offcommand = str(config['APP']['OFF_COMMAND'])
 
         self.triggerprice = 0
+        self.triggerprice_tomorrow = 0
         self.lastaction = ''
         self.controldevicelist = {}
+        self.pricenow = 0
+        self.scaling = 1
+        self.highestprice = 0
+        self.date_to_fetch = ''
 
-        self.title("Electricity Price Control v0.2")
+        self.tomorrows_price = ''
+        self.todays_price = ''
+
+
+        self.title("Telldus Price Control v0.3")
 
         # Create left frame with Telldus stuff
         self.telldus = ttk.Labelframe(self, text="Telldus")
@@ -80,7 +89,7 @@ class MainWindowBuilder(tk.Tk):
         self.refresh_devices()
 
         # List for prices
-        self.priceframe = ttk.Labelframe(self, text="Prices")
+        self.priceframe = ttk.Labelframe(self, text="Price list")
         self.pricelist = Listbox(self.priceframe, height=24, width=40)
 
         self.priceframe.grid(column=2, row=0, padx=5, pady=5, ipady=6, rowspan=10, sticky="nw")
@@ -90,10 +99,10 @@ class MainWindowBuilder(tk.Tk):
         self.avgpriceframe = ttk.Labelframe(self, text="Price control")
         self.arealabel = ttk.Label(self.avgpriceframe, text="Price area:")
         self.areatext = ttk.Label(self.avgpriceframe, text="Unknown")
-        self.avgpricelabel = ttk.Label(self.avgpriceframe, text="Avg price:")
+        self.avgpricelabel = ttk.Label(self.avgpriceframe, text="Todays avg price:")
         self.avgpricecalc = ttk.Label(self.avgpriceframe, text="Unknown")
 
-        self.avgpriceframe.grid(column=3, row=4, padx=5, pady=9, ipady=10, sticky="nw", columnspan=1, rowspan="6")
+        self.avgpriceframe.grid(column=3, row=4, padx=5, pady=9, ipady=10, sticky="nw", columnspan=1, rowspan=6)
         self.arealabel.grid(column=0, row=0, padx=2, pady=0, sticky="w")
         self.areatext.grid(column=1, row=0, padx=2, pady=0, sticky="w")
         self.avgpricelabel.grid(column=0, row=1, padx=10, pady=0, sticky="w")
@@ -160,11 +169,11 @@ class MainWindowBuilder(tk.Tk):
 
         # Graph
         self.graphheight = 230
-        self.graphwidth = 500
+        self.graphwidth = 600
         self.graphframe = ttk.Labelframe(self, text="Price graph")
         self.graph = Canvas(self.graphframe, height=self.graphheight, width=self.graphwidth, bg="white")
 
-        self.graphframe.grid(column=3, row=0, padx=5, pady=5, rowspan=4, sticky="nw", columnspan="2")
+        self.graphframe.grid(column=3, row=0, padx=5, pady=5, rowspan=4, sticky="nw", columnspan=2)
         self.graph.grid(column=0, row=0, padx=4, pady=4)
 
     def add_device(self):
@@ -197,7 +206,10 @@ class MainWindowBuilder(tk.Tk):
     def fixedprice(self):
         if self.controltype.get() == "fixed":
             self.triggerprice = float(self.pricefixed_val.get())
-            self.update_list()
+            self.update_list_today()
+            # print(type(self.tomorrows_price))
+            if self.tomorrows_price.__class__ == list:
+                self.update_list_tomorrow()
             # print(f"fixed: {self.triggerprice}")
 
         return
@@ -205,14 +217,27 @@ class MainWindowBuilder(tk.Tk):
     def ratioprice(self):
         if self.controltype.get() == "ratio":
 
+            # todays prices
             prices = []
             for hour in self.todays_price:
                 prices.append(float(hour['SEK_per_kWh']))
 
             prices.sort()
             self.triggerprice = float(prices[int(self.priceratio_val.get())])
+
+           # tomorrows prices
+            if self.tomorrows_price.__class__ == list:
+                prices = []
+                for hour in self.tomorrows_price:
+                    prices.append(float(hour['SEK_per_kWh']))
+
+                prices.sort()
+                self.triggerprice_tomorrow = float(prices[int(self.priceratio_val.get())])
+
             # print(f"ratio: {self.priceratio_val.get()} price: {self.triggerprice}")
-        self.update_list()
+        self.update_list_today()
+        if self.tomorrows_price.__class__ == list:
+            self.update_list_tomorrow()
         return
 
     def refresh_devices(self):
@@ -295,8 +320,14 @@ class MainWindowBuilder(tk.Tk):
         time_now = datetime.now()
         date_to_fetch = datetime.strftime(time_now, "%Y/%m-%d")
         setattr(self, 'date_to_fetch', date_to_fetch)
-
         setattr(self, 'todays_price', self.getprice())
+
+        tomorrow = time_now + timedelta(1)
+        date_to_fetch = datetime.strftime(tomorrow, "%Y/%m-%d")
+        setattr(self, 'date_to_fetch', date_to_fetch)
+        setattr(self, 'tomorrows_price', self.getprice())
+
+
 
         # self.update_list()
         self.ratioprice()   # Run this to update ratio in case of date change
@@ -377,7 +408,7 @@ class MainWindowBuilder(tk.Tk):
                 print(e)
         return
 
-    def update_list(self):
+    def update_list_today(self):
 
         time_now = datetime.now()
         time_to_compare = datetime.strftime(time_now, "%Y-%m-%d    %H:00")
@@ -418,6 +449,13 @@ class MainWindowBuilder(tk.Tk):
         setattr(self, "highestprice", highest)
         setattr(self, "lowestprice", lowest)
 
+        if self.tomorrows_price.__class__ == list:
+            for index, hour in enumerate(self.tomorrows_price):
+                if highest < hour['SEK_per_kWh']:
+                    highest = hour['SEK_per_kWh']
+            if highest > self.highestprice:
+                setattr(self, "highestprice", highest)
+
         self.graph.delete("all")
 
         # print(self.highestprice)
@@ -426,12 +464,12 @@ class MainWindowBuilder(tk.Tk):
         # Loop for graph
         for index, hour in enumerate(self.todays_price):
 
-            offset = 12
-            spacing = 20
+            offset = 4
+            spacing = 12
 
-            max = 0.9
+            max_height = 0.9
 
-            setattr(self, "scaling", self.graphheight / self.highestprice * max)
+            setattr(self, "scaling", self.graphheight / self.highestprice * max_height)
             # scaling = self.graphheight / hour['SEK_per_kWh']
 
             bar_start_x = index * spacing + offset
@@ -439,7 +477,7 @@ class MainWindowBuilder(tk.Tk):
             bar_height = hour['SEK_per_kWh'] * self.scaling
             bar_start_y = self.graphheight - bar_height
 
-            bar_width = 16
+            bar_width = 10
             bar_end_x = bar_start_x + bar_width
             bar_end_y = self.graphheight
 
@@ -451,6 +489,10 @@ class MainWindowBuilder(tk.Tk):
                 self.graph.create_rectangle(bar_start_x, bar_start_y, bar_end_x, bar_end_y,
                                             fill='#66ff66')
 
+        self.graph.create_rectangle(295, 0, 600, self.graphheight, fill="light gray", outline='')
+        if not self.tomorrows_price.__class__ == list:
+            self.graph.create_text(400, 120, text="Tomorrows price\nnot yet available", fill="gray")
+
         if self.controltype.get() == "fixed":
             startx = 0
             starty = self.graphheight - self.triggerprice * self.scaling
@@ -458,7 +500,70 @@ class MainWindowBuilder(tk.Tk):
             endy = starty
             self.graph.create_line(startx, starty, endx, endy, width="2", fill="blue")
 
+    def update_list_tomorrow(self):
 
+        # Loop for list
+        for index, hour in enumerate(self.tomorrows_price):
+
+            time_parsed = datetime.strptime(hour['time_start'], "%Y-%m-%dT%H:%M:%S%z")
+            time_nice = time_parsed.strftime("%Y-%m-%d    %H:00")
+
+            self.pricelist.insert(index + 24, str(f"{time_nice}    {hour['SEK_per_kWh']:.2f} SEK"))
+
+            if self.controltype.get() == "ratio":
+                if self.triggerprice_tomorrow > hour['SEK_per_kWh']:
+                    self.pricelist.itemconfigure(index + 24, background='#66ff66')
+            else:
+                if self.triggerprice > hour['SEK_per_kWh']:
+                    self.pricelist.itemconfigure(index + 24, background='#66ff66')
+
+        # self.graph.delete("all")
+
+        # print(self.highestprice)
+        # print(self.lowestprice)
+
+        # Loop for graph
+        for index, hour in enumerate(self.tomorrows_price):
+
+            offset = 300
+            spacing = 12
+
+            max_height = 0.9
+
+            setattr(self, "scaling", self.graphheight / self.highestprice * max_height)
+            # scaling = self.graphheight / hour['SEK_per_kWh']
+
+            bar_start_x = index * spacing + offset
+
+            bar_height = hour['SEK_per_kWh'] * self.scaling
+            bar_start_y = self.graphheight - bar_height
+
+            bar_width = 10
+            bar_end_x = bar_start_x + bar_width
+            bar_end_y = self.graphheight
+
+            if self.controltype.get() == "ratio":
+                if self.triggerprice_tomorrow <= hour['SEK_per_kWh']:     # fixed or ratio
+                    self.graph.create_rectangle(bar_start_x, bar_start_y, bar_end_x, bar_end_y, fill="red")
+
+                else:
+                    self.graph.create_rectangle(bar_start_x, bar_start_y, bar_end_x, bar_end_y,
+                                                fill='#66ff66')
+
+            if self.controltype.get() == "fixed":
+                if self.triggerprice <= hour['SEK_per_kWh']:     # fixed or ratio
+                    self.graph.create_rectangle(bar_start_x, bar_start_y, bar_end_x, bar_end_y, fill="red")
+
+                else:
+                    self.graph.create_rectangle(bar_start_x, bar_start_y, bar_end_x, bar_end_y,
+                                                fill='#66ff66')
+
+        if self.controltype.get() == "fixed":
+            startx = 0
+            starty = self.graphheight - self.triggerprice * self.scaling
+            endx = self.graphwidth
+            endy = starty
+            self.graph.create_line(startx, starty, endx, endy, width="2", fill="blue")
 
     def getprice(self):
 
@@ -471,40 +576,45 @@ class MainWindowBuilder(tk.Tk):
 
         if not os.path.isfile('log/' + log_filename):
             print('creating price log file')
-            with open('log/' + log_filename, 'w') as fp:
-                #fp.write('This is first line')
-                #pass
 
-                # GET https://www.elprisetjustnu.se/api/v1/prices/2023/01-15_SE3.json
-                command_request = self.el_api + self.date_to_fetch + '_' + self.area + '.json'
-                print('Fetching ' + command_request)
-                try:
-                    json_data = requests.request("GET", command_request, headers='', data='', timeout=self.request_timeout)
-                    #return json_data.json()
+            # GET https://www.elprisetjustnu.se/api/v1/prices/2023/01-15_SE3.json
+            command_request = self.el_api + self.date_to_fetch + '_' + self.area + '.json'
 
-                except Exception as e:
-                    print(e)
+            json_data = requests.request("GET", command_request, headers='', data='', timeout=self.request_timeout)
+            # print(json_data)
 
-                json.dump(json_data.json(), fp)
-                #fp.write(write)
-                return json_data.json()
-                pass
+            if json_data.ok:
+                print('Fetching ' + command_request + ' OK')
+                with open('log/' + log_filename, 'w') as fp:
 
-        with open(r'log/' + log_filename, 'r') as fp:
-            print('Reading from local file ' + log_filename)
-            return json.load(fp)
+                    json.dump(json_data.json(), fp)
+                    # fp.write(write)
+                    return json_data.json()
+                    pass
+
+            else:
+                print('Fetching ' + command_request + ' failed: ' + json_data.reason)
+                return
+
+        if os.path.isfile('log/' + log_filename):
+            with open(r'log/' + log_filename, 'r') as fp:
+                print('Reading from local file ' + log_filename)
+                return json.load(fp)
 
 
 def main():
 
     mainwindow = MainWindowBuilder()
-    mainwindow.iconbitmap("sausage_icon_211243.ico")
+    # mainwindow.iconbitmap("sausage_icon_211243.ico")
 
     time_now = datetime.now()
     mainwindow.date_to_fetch = datetime.strftime(time_now, "%Y/%m-%d")
-
     mainwindow.todays_price = mainwindow.getprice()
     mainwindow.areatext['text'] = mainwindow.area
+
+    tomorrow = time_now + timedelta(1)
+    mainwindow.date_to_fetch = datetime.strftime(tomorrow, "%Y/%m-%d")
+    mainwindow.tomorrows_price = mainwindow.getprice()
 
     if mainwindow.mode == 'fixed':
         mainwindow.fixedprice()
