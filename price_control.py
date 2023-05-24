@@ -45,7 +45,7 @@ class MainWindowBuilder(tk.Tk):
         self.todays_price = ''
 
 
-        self.title("Telldus Price Control v0.3")
+        self.title("Telldus Price Control v0.4")
 
         # Create left frame with Telldus stuff
         self.telldus = ttk.Labelframe(self, text="Telldus")
@@ -580,21 +580,25 @@ class MainWindowBuilder(tk.Tk):
             # GET https://www.elprisetjustnu.se/api/v1/prices/2023/01-15_SE3.json
             command_request = self.el_api + self.date_to_fetch + '_' + self.area + '.json'
 
-            json_data = requests.request("GET", command_request, headers='', data='', timeout=self.request_timeout)
-            # print(json_data)
+            try:
+                json_data = requests.request("GET", command_request, headers='', data='', timeout=self.request_timeout)
+                # print(json_data)
 
-            if json_data.ok:
-                print('Fetching ' + command_request + ' OK')
-                with open('log/' + log_filename, 'w') as fp:
+                if json_data.ok:
+                    print('Fetching ' + command_request + ' OK')
+                    with open('log/' + log_filename, 'w') as fp:
 
-                    json.dump(json_data.json(), fp)
-                    # fp.write(write)
-                    return json_data.json()
-                    pass
+                        json.dump(json_data.json(), fp)
+                        # fp.write(write)
+                        return json_data.json()
+                        pass
 
-            else:
-                print('Fetching ' + command_request + ' failed: ' + json_data.reason)
-                return
+                else:
+                    print('Fetching ' + command_request + ' failed: ' + json_data.reason)
+                    return
+
+            except requests.exceptions.ConnectionError:
+                print("Connection error")
 
         if os.path.isfile('log/' + log_filename):
             with open(r'log/' + log_filename, 'r') as fp:
