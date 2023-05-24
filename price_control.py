@@ -44,7 +44,6 @@ class MainWindowBuilder(tk.Tk):
         self.tomorrows_price = ''
         self.todays_price = ''
 
-
         self.title("Telldus Price Control v0.4")
 
         # Create left frame with Telldus stuff
