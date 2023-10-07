@@ -579,8 +579,7 @@ class MainWindowBuilder(tk.Tk):
 
             if time_to_compare == time_nice:
                 self.pricelist.delete(index)
-                self.pricelist.insert(index,
-                                      str(f"{time_nice}    {hour['SEK_per_kWh']:.2f} SEK    <-- Now"))
+                self.pricelist.insert(index, str(f"{time_nice}    {hour['SEK_per_kWh']:.2f} SEK    <-- Now"))
                 setattr(self, 'pricenow', hour['SEK_per_kWh'])
 
             if self.triggerprice > hour['SEK_per_kWh']:
@@ -673,22 +672,21 @@ class MainWindowBuilder(tk.Tk):
 
         # Loop for list
         for index, hour in enumerate(self.tomorrows_price):
-            print(index)
 
             time_parsed = datetime.strptime(hour['time_start'],
                                             "%Y-%m-%dT%H:%M:%S%z")
             time_nice = time_parsed.strftime("%Y-%m-%d    %H:00")
 
-            self.pricelist.insert(index + len(self.tomorrows_price) - 1,
+            self.pricelist.insert(index + len(self.todays_price),
                                   str(f"{time_nice}    {hour['SEK_per_kWh']:.2f} SEK"))
 
             if self.controltype.get() == "ratio":
                 if self.triggerprice_tomorrow > hour['SEK_per_kWh']:
-                    self.pricelist.itemconfigure(index + len(self.tomorrows_price) - 1,
+                    self.pricelist.itemconfigure(index + len(self.todays_price),
                                                  background='#66ff66')
             else:
                 if self.triggerprice > hour['SEK_per_kWh']:
-                    self.pricelist.itemconfigure(index + len(self.tomorrows_price) - 1,
+                    self.pricelist.itemconfigure(index + len(self.todays_price),
                                                  background='#66ff66')
 
         # self.graph.delete("all")
