@@ -44,7 +44,7 @@ class MainWindowBuilder(tk.Tk):
         self.tomorrows_price = ''
         self.todays_price = ''
 
-        self.title("Telldus Price Control v0.5")
+        self.title("Telldus Price Control v0.6")
 
         # Create left frame with Telldus stuff
         self.telldus = ttk.Labelframe(self, text="Telldus")
@@ -616,10 +616,14 @@ class MainWindowBuilder(tk.Tk):
 
             max_height = 0.9
 
-            setattr(self,
-                    "scaling",
-                    self.graphheight / self.highestprice * max_height)
+            if self.highestprice != 0:
+                setattr(self,
+                        "scaling",
+                        self.graphheight / self.highestprice * max_height)
             # scaling = self.graphheight / hour['SEK_per_kWh']
+
+            else:
+                setattr(self, "scaling", 100)
 
             bar_start_x = index * spacing + offset
 
