@@ -12,6 +12,8 @@ import os
 import json
 import subprocess
 
+version = "0.6.1"
+
 
 class MainWindowBuilder(tk.Tk):
 
@@ -44,7 +46,7 @@ class MainWindowBuilder(tk.Tk):
         self.tomorrows_price = ''
         self.todays_price = ''
 
-        self.title("Telldus Price Control v0.6")
+        self.title("Telldus Price Control " + version)
 
         # Create left frame with Telldus stuff
         self.telldus = ttk.Labelframe(self, text="Telldus")
@@ -792,7 +794,7 @@ class MainWindowBuilder(tk.Tk):
                     print('Fetching ' + command_request + ' OK')
                     with open('log/' + log_filename, 'w') as fp:
 
-                        json.dump(json_data.json(), fp)
+                        json.dump(json_data.json(), fp, indent=2)
                         # fp.write(write)
                         return json_data.json()
                         pass
