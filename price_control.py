@@ -12,7 +12,7 @@ import os
 import json
 import subprocess
 
-version = "0.7.0"
+version = "0.7.1"
 
 
 class MainWindowBuilder(tk.Tk):
@@ -148,6 +148,12 @@ class MainWindowBuilder(tk.Tk):
                              pady=5,
                              ipady=6, rowspan=10, sticky="nw")
         self.pricelist.grid(column=0, row=0, padx=4, pady=4)
+
+        # Scroll bar for price list
+        self.scrollbar = ttk.Scrollbar(self)
+        self.pricelist.config(yscrollcommand=self.scrollbar.set)
+        self.scrollbar.config(command=self.pricelist.yview)
+        self.scrollbar.grid(column=2, row=0, rowspan=48, sticky="nse")
 
         # Price control
         self.avgpriceframe = ttk.Labelframe(self, text="Price control")
