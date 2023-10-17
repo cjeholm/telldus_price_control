@@ -299,11 +299,14 @@ class MainWindowBuilder(tk.Tk):
         self.populate_list()
 
     def populate_list(self):
-        self.controldevicelist["66"] = "66 - test 1"
-        self.controldevicelist["88"] = "88 - test 2"
+        if os.path.exists("devices"):
+            with open("devices", "r", encoding="utf-8") as file:
+                file = file.readlines()
+                for line in file:
+                    device_id = line.split(" ")[0]
+                    self.controldevicelist[str(device_id)] = line[:-1]
         for device in self.controldevicelist.values():
             self.devicelist.insert(0, device)
-
         return
 
     def save_devices(self):
@@ -313,7 +316,7 @@ class MainWindowBuilder(tk.Tk):
             list_to_save += device + "\n"
         if os.path.exists(device_file):
             os.remove(device_file)
-        with open(device_file, "w") as file:
+        with open(device_file, "w", encoding="utf-8") as file:
             file.write(list_to_save)
         return
 
