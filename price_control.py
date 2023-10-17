@@ -296,6 +296,27 @@ class MainWindowBuilder(tk.Tk):
                              columnspan=2)
         self.graph.grid(column=0, row=0, padx=4, pady=4)
 
+        self.populate_list()
+
+    def populate_list(self):
+        self.controldevicelist["66"] = "66 - test 1"
+        self.controldevicelist["88"] = "88 - test 2"
+        for device in self.controldevicelist.values():
+            self.devicelist.insert(0, device)
+
+        return
+
+    def save_devices(self):
+        list_to_save = ""
+        device_file = "devices"
+        for device in self.controldevicelist.values():
+            list_to_save += device + "\n"
+        if os.path.exists(device_file):
+            os.remove(device_file)
+        with open(device_file, "w") as file:
+            file.write(list_to_save)
+        return
+
     def add_device(self):
         device_string = self.device_combo.get()
         device_id = device_string.split(" ")[0]
@@ -310,18 +331,22 @@ class MainWindowBuilder(tk.Tk):
         for device in self.controldevicelist.values():
             self.devicelist.insert(0, device)
 
+        self.save_devices()
+
     def remove_device(self):
         # device_string = self.device_combo.get()
         selected = self.devicelist.curselection()
         device_string = self.devicelist.get(selected)
         device_id = device_string.split(" ")[0]
-        print(f"{device_id} added")
+        print(f"{device_id} removed")
 
         self.controldevicelist.pop(device_id, None)
 
         self.devicelist.delete(0, 666)
         for device in self.controldevicelist.values():
             self.devicelist.insert(0, device)
+
+        self.save_devices()
 
     def fixedprice(self):
         if self.controltype.get() == "fixed":
