@@ -303,6 +303,7 @@ class MainWindowBuilder(tk.Tk):
             with open("devices", "r", encoding="utf-8") as file:
                 file = file.readlines()
                 for line in file:
+                    print(f"Loading saved device: {line[:-1]}")
                     device_id = line.split(" ")[0]
                     self.controldevicelist[str(device_id)] = line[:-1]
         for device in self.controldevicelist.values():
