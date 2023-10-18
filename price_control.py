@@ -12,7 +12,7 @@ import os
 import json
 import subprocess
 
-version = "0.7.2"
+version = "0.7.3"
 
 
 class MainWindowBuilder(tk.Tk):
@@ -410,8 +410,9 @@ class MainWindowBuilder(tk.Tk):
                                          headers=headers,
                                          data='',
                                          timeout=self.timeout)
+
             dict_data = json_data.json()
-            print(dict_data)
+            print(json.dumps(dict_data, indent=2, sort_keys=True))
 
         except Exception as e:
             print(e)
