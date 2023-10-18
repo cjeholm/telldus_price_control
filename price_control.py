@@ -12,7 +12,7 @@ import os
 import json
 import subprocess
 
-version = "0.7.1"
+version = "0.7.2"
 
 
 class MainWindowBuilder(tk.Tk):
@@ -811,7 +811,7 @@ class MainWindowBuilder(tk.Tk):
             os.mkdir('log')
 
         if not os.path.isfile('log/' + log_filename):
-            print('creating price log file')
+            # print('creating price log file')
 
             # GET https://www.elprisetjustnu.se/api/v1/prices/2023/01-15_SE3.json
             command_request = \
@@ -841,8 +841,11 @@ class MainWindowBuilder(tk.Tk):
                           json_data.reason)
                     return
 
-            except requests.exceptions.ConnectionError:
-                print("Connection error")
+            except requests.exceptions.ConnectionError as e:
+                print(f"Connection error: {e}")
+
+            except requests.exceptions.ReadTimeout as e:
+                print(f"Read timed out: {e}")
 
         if os.path.isfile('log/' + log_filename):
             with open(r'log/' + log_filename, 'r') as fp:
