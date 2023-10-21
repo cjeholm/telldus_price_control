@@ -12,7 +12,7 @@ import os
 import json
 import subprocess
 
-version = "0.7.3"
+version = "0.7.4"
 
 
 class MainWindowBuilder(tk.Tk):
@@ -493,6 +493,11 @@ class MainWindowBuilder(tk.Tk):
         date_to_fetch = datetime.strftime(time_now, "%Y/%m-%d")
         setattr(self, 'date_to_fetch', date_to_fetch)
         setattr(self, 'todays_price', self.getprice())
+        todays_price = self.getprice()
+        if todays_price:
+            setattr(self, 'todays_price', todays_price)
+        else:
+            setattr(self, 'todays_price', self.defaultprice())
 
         tomorrow = time_now + timedelta(1)
         date_to_fetch = datetime.strftime(tomorrow, "%Y/%m-%d")
@@ -853,6 +858,20 @@ class MainWindowBuilder(tk.Tk):
                 print('Reading from local file ' + log_filename)
                 return json.load(fp)
 
+    def defaultprice(self):
+        i = 0
+        default_price = []
+        while i < 24:
+            timeString = f'2023-01-01T{i}:00:00+02:00'
+            if (i % 2) == 0:
+                default_price.append({'SEK_per_kWh': 0.01,
+                                      'time_start': timeString})
+            else:
+                default_price.append({'SEK_per_kWh': 4.00,
+                                      'time_start': timeString})
+            i += 1
+        return default_price
+
 
 def main():
 
@@ -861,7 +880,12 @@ def main():
 
     time_now = datetime.now()
     mainwindow.date_to_fetch = datetime.strftime(time_now, "%Y/%m-%d")
-    mainwindow.todays_price = mainwindow.getprice()
+    todays_price = mainwindow.getprice()
+    if todays_price:
+        mainwindow.todays_price = todays_price
+    else:
+        mainwindow.todays_price = mainwindow.defaultprice()
+        print("Setting a default price list")
     mainwindow.areatext['text'] = mainwindow.area
 
     tomorrow = time_now + timedelta(1)
