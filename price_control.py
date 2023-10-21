@@ -492,7 +492,6 @@ class MainWindowBuilder(tk.Tk):
         time_now = datetime.now()
         date_to_fetch = datetime.strftime(time_now, "%Y/%m-%d")
         setattr(self, 'date_to_fetch', date_to_fetch)
-        setattr(self, 'todays_price', self.getprice())
         todays_price = self.getprice()
         if todays_price:
             setattr(self, 'todays_price', todays_price)
