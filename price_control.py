@@ -12,7 +12,7 @@ import os
 import json
 import subprocess
 
-version = "0.7.4"
+version = "0.7.5"
 
 
 class MainWindowBuilder(tk.Tk):
@@ -863,10 +863,10 @@ class MainWindowBuilder(tk.Tk):
         while i < 24:
             timeString = f'2023-01-01T{i}:00:00+02:00'
             if (i % 2) == 0:
-                default_price.append({'SEK_per_kWh': 0.01,
+                default_price.append({'SEK_per_kWh': i / 100,
                                       'time_start': timeString})
             else:
-                default_price.append({'SEK_per_kWh': 4.00,
+                default_price.append({'SEK_per_kWh': 4.00 + i / 100,
                                       'time_start': timeString})
             i += 1
         return default_price
