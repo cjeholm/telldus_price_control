@@ -11,8 +11,18 @@ from datetime import datetime, timedelta
 import os
 import json
 import subprocess
+import logging
 
-version = "0.7.5"
+version = "0.8"
+
+config = configparser.ConfigParser()
+config.read('settings.ini')
+try:
+    loglevel = int(config['APP']['LOGGING'])
+except Exception:
+    loglevel = 30
+
+logging.basicConfig(format='%(levelname)s: %(message)s', level=loglevel)
 
 
 class MainWindowBuilder(tk.Tk):
@@ -20,8 +30,9 @@ class MainWindowBuilder(tk.Tk):
     def __init__(self):
         super().__init__()
 
-        config = configparser.ConfigParser()
-        config.read('settings.ini')
+        logging.debug("Building main window")
+        # config = configparser.ConfigParser()
+        # config.read('settings.ini')
         self.area = str(config['APP']['AREA'])
         self.el_api = str(config['APP']['EL_API'])
         self.request_timeout = int(config['APP']['REQUEST_TIMEOUT'])
@@ -309,7 +320,7 @@ class MainWindowBuilder(tk.Tk):
             with open("devices", "r", encoding="utf-8") as file:
                 file = file.readlines()
                 for line in file:
-                    print(f"Loading saved device: {line[:-1]}")
+                    logging.info(f"Loading saved device: {line[:-1]}")
                     device_id = line.split(" ")[0]
                     self.controldevicelist[str(device_id)] = line[:-1]
         for device in self.controldevicelist.values():
@@ -325,12 +336,14 @@ class MainWindowBuilder(tk.Tk):
             os.remove(device_file)
         with open(device_file, "w", encoding="utf-8") as file:
             file.write(list_to_save)
+            logging.info("Saving devices to file:")
+            logging.info(list_to_save)
         return
 
     def add_device(self):
         device_string = self.device_combo.get()
         device_id = device_string.split(" ")[0]
-        print(f"{device_id} added")
+        logging.info(f"{device_id} added")
 
         if device_string == "Select one":
             return
@@ -344,11 +357,10 @@ class MainWindowBuilder(tk.Tk):
         self.save_devices()
 
     def remove_device(self):
-        # device_string = self.device_combo.get()
         selected = self.devicelist.curselection()
         device_string = self.devicelist.get(selected)
         device_id = device_string.split(" ")[0]
-        print(f"{device_id} removed")
+        logging.info(f"{device_id} removed")
 
         self.controldevicelist.pop(device_id, None)
 
@@ -362,10 +374,9 @@ class MainWindowBuilder(tk.Tk):
         if self.controltype.get() == "fixed":
             self.triggerprice = float(self.pricefixed_val.get())
             self.update_list_today()
-            # print(type(self.tomorrows_price))
             if self.tomorrows_price.__class__ == list:
                 self.update_list_tomorrow()
-            # print(f"fixed: {self.triggerprice}")
+            logging.debug(f"fixed: {self.triggerprice}")
 
         return
 
@@ -398,7 +409,6 @@ class MainWindowBuilder(tk.Tk):
     def refresh_devices(self):
 
         dict_data = {}
-        # command_request = 'http://' + API_IP + '/api/devices/list'
         command_request = \
             'http://' + self.api_entry.get() + '/api/devices/list'
         headers = {
@@ -412,13 +422,13 @@ class MainWindowBuilder(tk.Tk):
                                          timeout=self.timeout)
 
             dict_data = json_data.json()
-            print(json.dumps(dict_data, indent=2, sort_keys=True))
+            logging.info(json.dumps(dict_data, indent=2, sort_keys=True))
 
         except Exception as e:
-            print(e)
+            logging.error(e)
 
         if 'device' not in dict_data:
-            print('No devices in response.')
+            logging.error('No devices in response.')
             self.devicelist_text['text'] = "No response."
             self.device_combo.set("No devices")
             self.device_combo['values'] = ""
@@ -440,7 +450,7 @@ class MainWindowBuilder(tk.Tk):
     def onbutton(self):
         device_string = self.device_combo.get()
         device_id = device_string.split(" ")[0]
-        print(f"{device_id} on")
+        logging.info(f"{device_id} on")
 
         command_request =\
             'http://' + self.api_entry.get() + '/api/device/turnOn'
@@ -455,17 +465,17 @@ class MainWindowBuilder(tk.Tk):
                                          params=payload,
                                          timeout=self.timeout)
             dict_data = json_data.json()
-            print(dict_data)
+            logging.info(dict_data)
 
         except Exception as e:
-            print(e)
+            logging.error(e)
 
         return
 
     def offbutton(self):
         device_string = self.device_combo.get()
         device_id = device_string.split(" ")[0]
-        print(f"{device_id} off")
+        logging.info(f"{device_id} off")
 
         command_request = \
             'http://' + self.api_entry.get() + '/api/device/turnOff'
@@ -480,10 +490,10 @@ class MainWindowBuilder(tk.Tk):
                                          params=payload,
                                          timeout=self.timeout)
             dict_data = json_data.json()
-            print(dict_data)
+            logging.info(dict_data)
 
         except Exception as e:
-            print(e)
+            logging.error(e)
 
         return
 
@@ -510,31 +520,33 @@ class MainWindowBuilder(tk.Tk):
             if self.lastaction == 'ON' and \
                     self.checkoverride_val.get() != 'ON':
                 self.lastaction_label['text'] = 'Last action: ON'
-                print('Already ON')
+                logging.debug('Already ON')
+
             else:
                 self.lastaction_label['text'] = 'Last action: Switching ON'
-                print('Switching ON')
+                logging.info('Switching ON')
                 self.devices_on()
             self.lastaction = 'ON'
         else:
             if self.lastaction == 'OFF' and\
                     self.checkoverride_val.get() != 'ON':
                 self.lastaction_label['text'] = 'Last action: OFF'
-                print('Already OFF')
+                logging.debug('Already OFF')
             else:
                 self.lastaction_label['text'] = 'Last action: Switching OFF'
-                print('Switching OFF')
+                logging.info('Switching OFF')
                 self.devices_off()
             self.lastaction = 'OFF'
 
         self.lastupdate['text'] =\
             datetime.strftime(datetime.now(), "Last update: %H:%M:%S")
+        logging.debug(f"Waiting for {self.delayseconds} milliseconds.")
         self.after(self.delayseconds, self.timer_loop)
 
     def devices_on(self):
 
         if self.customonentry.get():
-            print('Executing: ' + self.customonentry.get())
+            logging.info('Executing: ' + self.customonentry.get())
             try:
                 subprocess.Popen(self.customonentry.get())
             except Exception:
@@ -542,7 +554,7 @@ class MainWindowBuilder(tk.Tk):
 
         for device_id in self.controldevicelist.keys():
 
-            print(f"{device_id} on")
+            logging.info(f"{device_id} on")
 
             command_request =\
                 'http://' + self.api_entry.get() + '/api/device/turnOn'
@@ -557,16 +569,16 @@ class MainWindowBuilder(tk.Tk):
                                              params=payload,
                                              timeout=self.timeout)
                 dict_data = json_data.json()
-                print(dict_data)
+                logging.info(dict_data)
 
             except Exception as e:
-                print(e)
+                logging.error(e)
         return
 
     def devices_off(self):
 
         if self.customoffentry.get():
-            print('Executing: ' + self.customoffentry.get())
+            logging.info('Executing: ' + self.customoffentry.get())
             try:
                 subprocess.Popen(self.customoffentry.get())
             except Exception:
@@ -574,7 +586,7 @@ class MainWindowBuilder(tk.Tk):
 
         for device_id in self.controldevicelist.keys():
 
-            print(f"{device_id} off")
+            logging.info(f"{device_id} off")
 
             command_request =\
                 'http://' + self.api_entry.get() + '/api/device/turnOff'
@@ -589,10 +601,10 @@ class MainWindowBuilder(tk.Tk):
                                              params=payload,
                                              timeout=self.timeout)
                 dict_data = json_data.json()
-                print(dict_data)
+                logging.info(dict_data)
 
             except Exception as e:
-                print(e)
+                logging.error(e)
         return
 
     def update_list_today(self):
@@ -647,8 +659,8 @@ class MainWindowBuilder(tk.Tk):
 
         self.graph.delete("all")
 
-        # print(self.highestprice)
-        # print(self.lowestprice)
+        logging.debug(f"Highest: {self.highestprice}")
+        logging.debug(f"Lowest: {self.lowestprice}")
 
         # Loop for graph
         for index, hour in enumerate(self.todays_price):
@@ -666,6 +678,7 @@ class MainWindowBuilder(tk.Tk):
 
             else:
                 setattr(self, "scaling", 100)
+                logging.debug("Division by zero, setting scaling to 100")
 
             bar_start_x = index * spacing + offset
 
@@ -735,10 +748,6 @@ class MainWindowBuilder(tk.Tk):
                     self.pricelist.itemconfigure(index + len(self.todays_price),
                                                  background='#66ff66')
 
-        # self.graph.delete("all")
-
-        # print(self.highestprice)
-        # print(self.lowestprice)
 
         # Loop for graph
         for index, hour in enumerate(self.tomorrows_price):
@@ -751,7 +760,6 @@ class MainWindowBuilder(tk.Tk):
             setattr(self,
                     "scaling",
                     self.graphheight / self.highestprice * max_height)
-            # scaling = self.graphheight / hour['SEK_per_kWh']
 
             bar_start_x = index * spacing + offset
 
@@ -812,11 +820,11 @@ class MainWindowBuilder(tk.Tk):
         log_filename = log_filename.replace("/", "-")
 
         if not os.path.exists('log/'):
-            print('making log dir')
+            logging.info('Creating price log folder')
             os.mkdir('log')
 
         if not os.path.isfile('log/' + log_filename):
-            # print('creating price log file')
+            logging.info("Creating price log file")
 
             # GET https://www.elprisetjustnu.se/api/v1/prices/2023/01-15_SE3.json
             command_request = \
@@ -828,10 +836,9 @@ class MainWindowBuilder(tk.Tk):
                                              headers='',
                                              data='',
                                              timeout=self.request_timeout)
-                # print(json_data)
 
                 if json_data.ok:
-                    print('Fetching ' + command_request + ' OK')
+                    logging.info('Fetching ' + command_request + ' OK')
                     with open('log/' + log_filename, 'w') as fp:
 
                         json.dump(json_data.json(), fp, indent=2)
@@ -840,21 +847,22 @@ class MainWindowBuilder(tk.Tk):
                         pass
 
                 else:
-                    print('Fetching ' +
-                          command_request +
-                          ' failed: ' +
-                          json_data.reason)
+                    logging.info('Fetching ' +
+                                 command_request +
+                                 ' failed: ' +
+                                 json_data.reason)
                     return
 
             except requests.exceptions.ConnectionError as e:
-                print(f"Connection error: {e}")
+                logging.error(f"Connection error: {e}")
 
             except requests.exceptions.ReadTimeout as e:
                 print(f"Read timed out: {e}")
+                logging.error(f"Read timed out: {e}")
 
         if os.path.isfile('log/' + log_filename):
             with open(r'log/' + log_filename, 'r') as fp:
-                print('Reading from local file ' + log_filename)
+                logging.debug('Reading from local file ' + log_filename)
                 return json.load(fp)
 
     def defaultprice(self):
@@ -884,7 +892,7 @@ def main():
         mainwindow.todays_price = todays_price
     else:
         mainwindow.todays_price = mainwindow.defaultprice()
-        print("Setting a default price list")
+        logging.error("Fetching price list failed. Using a generic price list.")
     mainwindow.areatext['text'] = mainwindow.area
 
     tomorrow = time_now + timedelta(1)
@@ -902,4 +910,8 @@ def main():
 
 #   Main loop
 if __name__ == "__main__":
+    print("Terminal output is now handled by the logging module. " +
+          f"Your current logging level is set to {loglevel}. " +
+          "DEBUG = 10, INFO = 20, WARNING = 30, ERROR = 40, CRITICAL = 50")
+    logging.debug("Starting main loop")
     main()
