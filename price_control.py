@@ -857,7 +857,6 @@ class MainWindowBuilder(tk.Tk):
                 logging.error(f"Connection error: {e}")
 
             except requests.exceptions.ReadTimeout as e:
-                print(f"Read timed out: {e}")
                 logging.error(f"Read timed out: {e}")
 
         if os.path.isfile('log/' + log_filename):
