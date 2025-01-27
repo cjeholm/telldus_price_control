@@ -1,3 +1,12 @@
+## !! Be adviced - this version will break in June 2025 !!
+Sweden and maybe other Nordic countries will change from an hourly spot price to a new interval of 15 minutes. Read more: https://www.vattenfall.se/fokus/tips-rad/kvartsmatning-och-kvartspris/
+
+I wrote this program under the false assumption that a day will only ever be devided into 24 parts, or 23-25 for daylight savings time changes. Hence, the spot price data is interpreted as one key/value-pair per hour and they are not sanity checked. With the new interval the 15-minute pairs or rows will be interpreted as hours and the behaviour of this program will be wrong.
+
+Before the switch to a 15-minute spot price interval I will try to find the time for an update that can handle the new system. I do not yet have any confirmed information on the format of the new data. Check this page for updates.
+
+### The current version _will_ break and undefined behaviour will ensue.
+
 ## Electricity Price Control for Telldus Live devices
 
 With electricity prices going crazy in Sweden this program lets you control your Telldus Live-connected smart plugs by the hourly electric price rate. This program is made for Swedish prices in SEK but feel free to modify it for other currencies.
