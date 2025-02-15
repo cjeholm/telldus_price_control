@@ -24,6 +24,7 @@
             with p; [
               # numpy
               requests
+              tkinter
               # pandas
             ]))
         ];
