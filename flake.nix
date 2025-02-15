@@ -9,10 +9,7 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
   };
 
-  outputs = {
-    nixpkgs,
-    ...
-  }: let
+  outputs = {nixpkgs, ...}: let
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
   in {
@@ -24,6 +21,8 @@
             with p; [
               # numpy
               requests
+              tkinter
+              tzlocal
               # pandas
             ]))
         ];
