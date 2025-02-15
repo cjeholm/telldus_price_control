@@ -6,16 +6,16 @@
 import tkinter as tk
 from tkinter import ttk, Listbox, Canvas
 import configparser
-from datetime import datetime, timedelta
-from tzlocal import get_localzone
+from datetime import datetime, date, timedelta
 import os
 import json
 import subprocess
 import logging
 
 import requests
+from tzlocal import get_localzone
 
-VERSION = "0.8"
+VERSION = "25.2"
 
 config = configparser.ConfigParser()
 config.read("settings.ini")
@@ -570,9 +570,7 @@ class MainWindowBuilder(tk.Tk):
                 self.pricelist.delete(index)
                 self.pricelist.insert(
                     index,
-                    str(
-                        f"{time_nice}    {hour['SEK_per_kWh']:.2f} SEK    <-- Now"
-                    ),
+                    str(f"{time_nice}    {hour['SEK_per_kWh']:.2f} SEK    <-- Now"),
                 )
                 setattr(self, "pricenow", hour["SEK_per_kWh"])
 
@@ -814,8 +812,10 @@ class MainWindowBuilder(tk.Tk):
     def defaultprice(self):
         i = 0
         default_price = []
+        current_date = date.today()
+        current_date = current_date.strftime("%Y-%m-%d")
         while i < 24:
-            timeString = f"2023-01-01T{i}:00:00+02:00"
+            timeString = f"{current_date}T{i}:00:00+02:00"
             if (i % 2) == 0:
                 default_price.append({"SEK_per_kWh": i / 100, "time_start": timeString})
             else:
