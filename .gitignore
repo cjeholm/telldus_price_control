@@ -1,3 +1,5 @@
 .idea/
 crash*
 log/
+devices
+default.json
