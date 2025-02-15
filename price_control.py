@@ -7,6 +7,7 @@ import tkinter as tk
 from tkinter import ttk, Listbox, Canvas
 import configparser
 from datetime import datetime, timedelta
+from tzlocal import get_localzone
 import os
 import json
 import subprocess
@@ -538,8 +539,8 @@ class MainWindowBuilder(tk.Tk):
 
     def update_list_today(self):
 
-        time_now = datetime.now()
-        time_to_compare = datetime.strftime(time_now, "%Y-%m-%d    %H:00")
+        local_tz = get_localzone()
+        current_time = datetime.now(local_tz)
 
         sum_price = 0
         highest = 0
@@ -551,8 +552,12 @@ class MainWindowBuilder(tk.Tk):
         # Loop for list
         for index, hour in enumerate(self.todays_price):
 
+            time_start = datetime.fromisoformat(hour["time_start"])
+            time_end = datetime.fromisoformat(hour["time_end"])
+
+            # this is just for printing the list nicely
             time_parsed = datetime.strptime(hour["time_start"], "%Y-%m-%dT%H:%M:%S%z")
-            time_nice = time_parsed.strftime("%Y-%m-%d    %H:00")
+            time_nice = time_parsed.strftime("%Y-%m-%d    %H:%M")
 
             self.pricelist.insert(
                 index, str(f"{time_nice}    {hour['SEK_per_kWh']:.2f} SEK")
@@ -560,11 +565,14 @@ class MainWindowBuilder(tk.Tk):
 
             sum_price += hour["SEK_per_kWh"]
 
-            if time_to_compare == time_nice:
+            # Here we check if the entry mathches the current time
+            if time_start < current_time and time_end > current_time:
                 self.pricelist.delete(index)
                 self.pricelist.insert(
                     index,
-                    str(f"{time_nice}    {hour['SEK_per_kWh']:.2f} SEK    <-- Now"),
+                    str(
+                        f"{time_nice}    {hour['SEK_per_kWh']:.2f} SEK    <-- Now"
+                    ),
                 )
                 setattr(self, "pricenow", hour["SEK_per_kWh"])
 
@@ -598,7 +606,8 @@ class MainWindowBuilder(tk.Tk):
         for index, hour in enumerate(self.todays_price):
 
             offset = 4
-            spacing = 12
+            spacing = int(300 / len(self.todays_price))
+            bar_width = spacing - 1
 
             max_height = 0.9
 
@@ -617,18 +626,27 @@ class MainWindowBuilder(tk.Tk):
             bar_height = hour["SEK_per_kWh"] * self.scaling
             bar_start_y = self.graphheight - bar_height
 
-            bar_width = 10
             bar_end_x = bar_start_x + bar_width
             bar_end_y = self.graphheight
 
             if self.triggerprice <= hour["SEK_per_kWh"]:
                 self.graph.create_rectangle(
-                    bar_start_x, bar_start_y, bar_end_x, bar_end_y, fill="red"
+                    bar_start_x,
+                    bar_start_y,
+                    bar_end_x,
+                    bar_end_y,
+                    fill="red",
+                    outline="",
                 )
 
             else:
                 self.graph.create_rectangle(
-                    bar_start_x, bar_start_y, bar_end_x, bar_end_y, fill="#66ff66"
+                    bar_start_x,
+                    bar_start_y,
+                    bar_end_x,
+                    bar_end_y,
+                    fill="#66ff66",
+                    outline="",
                 )
 
         self.graph.create_rectangle(
@@ -651,8 +669,9 @@ class MainWindowBuilder(tk.Tk):
         # Loop for list
         for index, hour in enumerate(self.tomorrows_price):
 
+            # this is just for printing the list nicely
             time_parsed = datetime.strptime(hour["time_start"], "%Y-%m-%dT%H:%M:%S%z")
-            time_nice = time_parsed.strftime("%Y-%m-%d    %H:00")
+            time_nice = time_parsed.strftime("%Y-%m-%d    %H:%M")
 
             self.pricelist.insert(
                 index + len(self.todays_price),
@@ -674,7 +693,9 @@ class MainWindowBuilder(tk.Tk):
         for index, hour in enumerate(self.tomorrows_price):
 
             offset = 300
-            spacing = 12
+            # spacing = 12
+            spacing = int(300 / len(self.tomorrows_price))
+            bar_width = spacing - 1
 
             max_height = 0.9
 
@@ -685,7 +706,6 @@ class MainWindowBuilder(tk.Tk):
             bar_height = hour["SEK_per_kWh"] * self.scaling
             bar_start_y = self.graphheight - bar_height
 
-            bar_width = 10
             bar_end_x = bar_start_x + bar_width
             bar_end_y = self.graphheight
 
@@ -693,24 +713,44 @@ class MainWindowBuilder(tk.Tk):
                 if self.triggerprice_tomorrow <= hour["SEK_per_kWh"]:
                     # fixed or ratio
                     self.graph.create_rectangle(
-                        bar_start_x, bar_start_y, bar_end_x, bar_end_y, fill="red"
+                        bar_start_x,
+                        bar_start_y,
+                        bar_end_x,
+                        bar_end_y,
+                        fill="red",
+                        outline="",
                     )
 
                 else:
                     self.graph.create_rectangle(
-                        bar_start_x, bar_start_y, bar_end_x, bar_end_y, fill="#66ff66"
+                        bar_start_x,
+                        bar_start_y,
+                        bar_end_x,
+                        bar_end_y,
+                        fill="#66ff66",
+                        outline="",
                     )
 
             if self.controltype.get() == "fixed":
                 if self.triggerprice <= hour["SEK_per_kWh"]:
                     # fixed or ratio
                     self.graph.create_rectangle(
-                        bar_start_x, bar_start_y, bar_end_x, bar_end_y, fill="red"
+                        bar_start_x,
+                        bar_start_y,
+                        bar_end_x,
+                        bar_end_y,
+                        fill="red",
+                        outline="",
                     )
 
                 else:
                     self.graph.create_rectangle(
-                        bar_start_x, bar_start_y, bar_end_x, bar_end_y, fill="#66ff66"
+                        bar_start_x,
+                        bar_start_y,
+                        bar_end_x,
+                        bar_end_y,
+                        fill="#66ff66",
+                        outline="",
                     )
 
         if self.controltype.get() == "fixed":
