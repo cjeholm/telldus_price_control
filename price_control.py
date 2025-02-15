@@ -326,8 +326,16 @@ class MainWindowBuilder(tk.Tk):
             for hour in self.todays_price:
                 prices.append(float(hour["SEK_per_kWh"]))
 
+
+            # here we convert the set value for ratio into a number of entries
+            # since number of entries may or may not correspond to hours
+            set_ratio = self.priceratio_val.get()
+            number_of_entries = (int(set_ratio) / 24) * len(prices)
+
+            # a clever way to find the trigger point from the ratio
+            # sort the list of prices and use the entry ratio number as index
             prices.sort()
-            self.triggerprice = float(prices[int(self.priceratio_val.get())])
+            self.triggerprice = float(prices[int(number_of_entries)])
 
             # tomorrows prices
             if self.tomorrows_price.__class__ == list:
