@@ -3,3 +3,5 @@ crash*
 log/
 devices
 default.json
+flake.nix
+flake.lock
