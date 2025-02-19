@@ -26,6 +26,10 @@ Place the token in setting.ini under AUTH in the format "Bearer tokenxxx..."
 ##### setting.ini
 Here you will find all the default settings to be loadaded at startup. Check it out before running the program for the first time.
 
+### Installation
+After cloning this repo, to install the required Python packages run:
+`py -m pip install -r requirements.txt`
+
 ### Settings
 ##### Telldus
 Here you can test the connection settings and manually control the devices. Selecting a smart plug in the drop down list and clicking "Add" will add the device to the list of price-controlled devices.
