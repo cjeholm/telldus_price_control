@@ -21,6 +21,8 @@ Prices are fetched from the API at https://www.elprisetjustnu.se
 ##### Telldus API token
 To connect to the TellStick you will need an access token. Instructions to create one can be found here: https://tellstick-server.readthedocs.io/en/latest/api/authentication.html
 
+If you experience problems with the authentication, like getting a 404 error from the TellStick, try using another browser. I had success with the Pale Moon browser on Linux, where Firefox, Zen and Opera did not work. If you know why this is, please let me know, we might find a solution that works in all browsers.
+
 Place the token in setting.ini under AUTH in the format "Bearer tokenxxx..."
 
 ##### setting.ini
