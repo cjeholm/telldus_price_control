@@ -5,6 +5,9 @@ Previous versions of Price Control assumes 24 price entries per day and this wil
 
 This current version 25.2 parses the price entries differently and allows for any number of entries per day. Please update asap.
 
+### This project will not receive any more feature updates
+No new features will be added to this project. If you want a webui, easy configuration of currency, a backend that can run as a service or in a container, and other new features that does not require Python and external dependencies - check out my other project [https://github.com/cjeholm/rust-price-control](https://github.com/cjeholm/rust-price-control)
+
 ## Electricity Price Control for Telldus Live devices
 
 With electricity prices going crazy in Sweden this program lets you control your Telldus Live-connected smart plugs by the hourly electric price rate. This program is made for Swedish prices in SEK but feel free to modify it for other currencies.
